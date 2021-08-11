@@ -1,17 +1,9 @@
-use std::collections::HashMap;
-use std::fmt::Debug;
-use std::future::Future;
-use std::ops::Deref;
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::fmt::{Debug, Formatter};
 
+use async_trait::async_trait;
 use futures::channel::oneshot;
-use futures::future::BoxFuture;
-use futures::{ready, FutureExt};
 
 use crate::actor::Actor;
-use crate::executor::{Executor, ExecutorHandle, JoinHandle};
-use crate::stage::{Scenes, Stage};
 
 pub trait Message: Debug + Send {}
 
@@ -20,11 +12,40 @@ where
     Self: Actor,
     M: Message,
 {
-    type Output: MessageResponse;
+    type Output: Send;
 
     fn handle(&mut self, msg: M) -> Self::Output;
 }
 
+#[async_trait]
+pub trait AsyncMessageHandler<M>: Sized + Send
+where
+    Self: Actor,
+    M: Message,
+{
+    type Output: Send;
+
+    async fn handle(&mut self, msg: M) -> Self::Output;
+}
+
+pub struct ResponseHandle<O>(pub(crate) oneshot::Receiver<O>);
+
+impl<O> ResponseHandle<O> {
+    #[inline]
+    pub async fn recv(self) -> Result<O, HandlerPanic> {
+        self.0.await.map_err(|_| HandlerPanic)
+    }
+}
+
+pub struct HandlerPanic;
+
+impl Debug for HandlerPanic {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "HandlerPanic")
+    }
+}
+
+/*
 pub trait MessageResponse: Sized {
     type Output;
     fn into_response<H>(self, stage: Scenes<H>) -> Response<Self::Output>
@@ -34,14 +55,7 @@ pub trait MessageResponse: Sized {
 
 pub struct Response<O>(O);
 
-pub struct ResponseHandle<O>(pub(crate) oneshot::Receiver<Response<O>>);
 
-impl<O> ResponseHandle<O> {
-    pub async fn recv(self) -> O {
-        let resp = self.0.await.unwrap();
-        resp.0
-    }
-}
 
 unsafe impl<O> Send for Response<O> {}
 
@@ -118,13 +132,4 @@ default impl<T: MessageResponse<Output = T>> MessageResponse for T {
     {
         Response(self)
     }
-}
-
-/*impl<'a, T> MessageResponse for BoxFuture<'a, T> where T: Send + 'a {
-    type Output = T;
-
-    fn into_response<H>(self, scenes: Scenes<H>) -> Response<Self::Output> where H: ExecutorHandle {
-        Response(self)
-    }
-}
-*/
+}*/

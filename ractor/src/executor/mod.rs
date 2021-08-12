@@ -16,10 +16,6 @@ pub trait Executor<H>: Deref<Target = H> + Send + 'static {
     where
         H: ExecutorHandle;
 
-    fn block_on<F>(&self, fut: F) -> F::Output
-    where
-        F: Future;
-
     fn shutdown(self)
     where
         Self: Sized,
@@ -35,6 +31,15 @@ pub trait ExecutorHandle: Send + Sync + Clone + 'static {
     fn spawn_blocking<F, O>(&self, task: F) -> O
         where
             F: FnOnce() -> O;
+
+    fn block_on<F>(&self, fut: F) -> F::Output
+        where
+            F: Future;
+
+    #[inline]
+    fn start_show<A>(&self, show: Show<A, Self>) where A: Actor {
+        self.spawn_async(Show::_default(show));
+    }
 }
 
 #[derive(Debug)]
@@ -50,9 +55,9 @@ pub trait JoinHandle<O> {
 }
 
 pub struct Show<A, H> {
-    rx: MailBoxRx<A>,
-    actor: A,
-    scenes: Scenes<H>,
+    pub rx: MailBoxRx<A>,
+    pub actor: A,
+    pub scenes: Scenes<H>,
 }
 
 impl<A, H> Show<A, H>
@@ -64,7 +69,7 @@ where
         Show { rx, actor, scenes }
     }
 
-    pub async fn into_future(mut self) -> () {
+    async fn _default(mut self) -> () {
         let scenes = self.scenes.clone();
 
         self.actor.started(&scenes).await;

@@ -1,4 +1,4 @@
-use crate::executor::{Show, JoinHandle, ExecutorHandle, Executor};
+use crate::executor::{Show, ExecutorHandle, Executor};
 use crate::actor::{Actor, ActorCreator};
 
 use crate::broker::Broker;
@@ -44,8 +44,8 @@ pub struct Scenes<H> {
 
 impl<H> Scenes<H> where H: ExecutorHandle {
     #[inline]
-    pub fn show<A>(&self, show: Show<A, H>) -> Box<dyn JoinHandle<()>> where A: Actor {
-        self.spawn_async(show.into_future())
+    pub fn show<A>(&self, show: Show<A, H>) where A: Actor {
+        self.start_show(show)
     }
 
     #[inline]
@@ -74,7 +74,7 @@ impl<E, H> Stage<E, H> where E: Executor<H>, H: ExecutorHandle {
         &self.scene
     }
 
-    pub fn block_on<F>(&self, func: fn(Scenes<H>) -> F) -> F::Output where F: Future {
+    pub fn block_on<F, FN>(&self, func: FN) -> F::Output where F: Future, FN: FnOnce(Scenes<H>) -> F {
         self.executor.block_on(func(self.scene.clone()))
     }
 

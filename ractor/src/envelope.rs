@@ -1,5 +1,6 @@
 use crossfire::mpmc::{RxFuture, SharedFutureBoth, TxFuture};
-use futures::channel::oneshot;
+use crossfire::mpsc;
+use crossfire::mpsc::SharedSenderBRecvF;
 use futures::future::BoxFuture;
 
 use crate::actor::Actor;
@@ -17,41 +18,37 @@ where
 {
     pub(crate) fn pack_async<M>(
         msg: M,
-    ) -> (
-        Envelope<A>,
-        oneshot::Receiver<<A as AsyncMessageHandler<M>>::Output>,
-    )
+    ) -> (Envelope<A>, RespRx<<A as AsyncMessageHandler<M>>::Output>)
     where
         M: Message + 'static,
         A: AsyncMessageHandler<M>,
     {
-        let (tx, rx) = oneshot::channel();
+        let (tx, rx) = mpsc::bounded_tx_blocking_rx_future(1);
         (
             Envelope::Async(Box::new(move |actor: &mut A| {
                 Box::pin(async move {
                     let resp = <A as AsyncMessageHandler<M>>::handle(actor, msg).await;
-                    tx.send(resp).map_err(|_| (/* Response is discarded */)).ok();
+                    tx.try_send(resp)
+                        .map_err(|_| (/* Response is discarded */))
+                        .ok();
                 })
             })),
             rx,
         )
     }
 
-    pub(crate) fn pack<M>(
-        msg: M,
-    ) -> (
-        Envelope<A>,
-        oneshot::Receiver<<A as MessageHandler<M>>::Output>,
-    )
+    pub(crate) fn pack<M>(msg: M) -> (Envelope<A>, RespRx<<A as MessageHandler<M>>::Output>)
     where
         M: Message + 'static,
         A: MessageHandler<M>,
     {
-        let (tx, rx) = oneshot::channel();
+        let (tx, rx) = mpsc::bounded_tx_blocking_rx_future(1);
         (
             Envelope::Sync(Box::new(move |actor: &mut A| {
                 let resp = <A as MessageHandler<M>>::handle(actor, msg);
-                tx.send(resp).map_err(|_| (/* Response is discarded */)).ok();
+                tx.send(resp)
+                    .map_err(|_| ( /* Response is discarded */ ))
+                    .ok();
             })),
             rx,
         )
@@ -60,3 +57,6 @@ where
 
 pub type MailBoxTx<A> = TxFuture<Envelope<A>, SharedFutureBoth>;
 pub type MailBoxRx<A> = RxFuture<Envelope<A>, SharedFutureBoth>;
+#[allow(unused)]
+pub type RespTx<O> = mpsc::TxBlocking<O, SharedSenderBRecvF>;
+pub type RespRx<O> = mpsc::RxFuture<O, SharedSenderBRecvF>;

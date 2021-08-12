@@ -1,9 +1,9 @@
 use std::fmt::{Debug, Formatter};
 
 use async_trait::async_trait;
-use futures::channel::oneshot;
 
 use crate::actor::Actor;
+use crate::envelope::RespRx;
 
 pub trait Message: Debug + Send {}
 
@@ -28,12 +28,17 @@ where
     async fn handle(&mut self, msg: M) -> Self::Output;
 }
 
-pub struct ResponseHandle<O>(pub(crate) oneshot::Receiver<O>);
+pub struct ResponseHandle<O>(pub(crate) RespRx<O>);
 
 impl<O> ResponseHandle<O> {
     #[inline]
     pub async fn recv(self) -> Result<O, HandlerPanic> {
-        self.0.await.map_err(|_| HandlerPanic)
+        self.0.recv().await.map_err(|_| HandlerPanic)
+    }
+
+    #[inline]
+    pub fn try_recv(&self) -> Result<O, HandlerPanic> {
+        self.0.try_recv().map_err(|_| HandlerPanic)
     }
 }
 

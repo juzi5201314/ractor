@@ -51,6 +51,14 @@ pub struct TokioExecutorHandle(Handle);
 
 impl ExecutorHandle for TokioExecutorHandle {
     #[inline]
+    fn block_on<F>(&self, fut: F) -> F::Output
+        where
+            F: Future,
+    {
+        self.0.block_on(fut)
+    }
+
+    #[inline]
     fn spawn_async<F>(&self, task: F) -> Box<dyn JoinHandle<F::Output>>
     where
         F: Future + Send + 'static,
@@ -109,13 +117,6 @@ impl Executor<TokioExecutorHandle> for TokioExecutor {
     #[inline]
     fn handle(&self) -> &TokioExecutorHandle {
         &self.handle
-    }
-
-    fn block_on<F>(&self, fut: F) -> F::Output
-    where
-        F: Future,
-    {
-        self.rt.block_on(fut)
     }
 
     fn shutdown(self) {

@@ -5,7 +5,7 @@ pub use executor::{Executor, JoinHandle};
 
 use crate::actor::Actor;
 use crate::context::Context;
-use crate::envelope::{Envelope, MailBoxRx};
+use crate::envelope::Envelope;
 
 #[cfg(all(feature = "use_tokio", feature = "use_async-std"))]
 compile_error!("Only one of the asynchronous executors can be selected.");
@@ -15,7 +15,6 @@ compile_error!("Only one of the asynchronous executors can be selected.");
 mod executor;
 
 pub struct ActorRunner<A> {
-    pub rx: MailBoxRx<A>,
     pub actor: A,
     pub context: Arc<Context<A>>,
 }
@@ -25,10 +24,10 @@ where
     A: Actor,
 {
     pub async fn run(mut self) -> () {
-        self.actor.started().await;
+        self.actor.started(&self.context).await;
         self.context.alive_count.fetch_add(1, Ordering::SeqCst);
 
-        while let Ok(envelope) = self.rx.recv().await {
+        while let Ok(envelope) = self.context.recipient.recv().await {
             match envelope {
                 Envelope::Task(handle) => {
                     (handle)(&mut self.actor).await;
@@ -37,6 +36,6 @@ where
             }
         }
         self.context.alive_count.fetch_sub(1, Ordering::SeqCst);
-        self.actor.stopped().await;
+        self.actor.stopped(&self.context).await;
     }
 }

@@ -6,7 +6,7 @@ use futures::future::BoxFuture;
 use crate::actor::Actor;
 use crate::message::{Message, MessageHandler};
 
-pub enum Envelope<A> {
+pub enum Envelope<A :?Sized> {
     Task(Box<dyn FnOnce(&mut A) -> BoxFuture<()> + Send>),
     Stop,
 }

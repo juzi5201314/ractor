@@ -1,8 +1,12 @@
+use std::future::Future;
 use std::ops::Deref;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
+use std::task::Poll;
 
 use crossfire::mpmc::bounded_future_both;
+use futures::Stream;
 use futures::stream::FuturesUnordered;
 
 use crate::actor::Actor;
@@ -28,13 +32,13 @@ where
         let context = Arc::new(Context {
             self_addr: Arc::downgrade(&addr),
             stage: stage.clone(),
-            alive_count: AtomicUsize::new(0)
+            alive_count: AtomicUsize::new(0),
+            recipient: rx
         });
 
         let join_handles = (0..quantity)
             .map(|_| {
                 stage.run(ActorRunner {
-                    rx: rx.clone(),
                     actor: A::create(&context),
                     context: context.clone(),
                 })
@@ -53,11 +57,8 @@ where
     A: Actor,
 {
     #[cfg(feature = "use_tokio")]
-    pub async fn wait_for_actors(&mut self) -> Result<(), tokio::task::JoinError> {
-        for res in futures::future::join_all(&mut self.actor_runner_handles).await {
-            res?
-        }
-        Ok(())
+    pub async fn wait_for_actors(&mut self) -> WaitForActors<'_> {
+        WaitForActors(&mut self.actor_runner_handles)
     }
 
     #[cfg(feature = "use_async-std")]
@@ -80,5 +81,21 @@ impl<A> Deref for Broker<A> {
 
     fn deref(&self) -> &Self::Target {
         &self.addr
+    }
+}
+
+pub struct WaitForActors<'a>(&'a mut FuturesUnordered<JoinHandle<()>>);
+
+impl<'a> Future for WaitForActors<'a> {
+    type Output = ();
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        match Pin::new(&mut self.0).poll_next(cx) {
+            Poll::Ready(opt) => match opt {
+                None => Poll::Ready(()),
+                Some(res) => Poll::Pending, // todo: error handling
+            },
+            Poll::Pending => Poll::Pending,
+        }
     }
 }

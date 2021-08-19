@@ -3,7 +3,7 @@ use crate::error::{ChannelSendError, ChannelTrySendError};
 use crate::message::Message;
 use crate::{Actor, MessageHandler, ResponseHandle};
 
-pub struct Address<A> {
+pub struct Address<A :?Sized> {
     pub(crate) sender: MailBoxTx<A>,
 }
 

@@ -2,9 +2,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Weak;
 
 use crate::{Actor, Address, Stage};
+use crate::envelope::MailBoxRx;
 
-pub struct Context<A> {
+pub struct Context<A: ?Sized> {
     pub self_addr: Weak<Address<A>>,
+    pub recipient: MailBoxRx<A>,
     pub stage: Stage,
     pub alive_count: AtomicUsize
 }

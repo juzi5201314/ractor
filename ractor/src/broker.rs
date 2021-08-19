@@ -2,7 +2,6 @@ use std::future::Future;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::atomic::AtomicUsize;
 use std::task::Poll;
 
 use crossfire::mpmc::bounded_future_both;
@@ -11,7 +10,7 @@ use futures::stream::FuturesUnordered;
 
 use crate::actor::Actor;
 use crate::address::Address;
-use crate::context::Context;
+use crate::context::{Context, Inner};
 use crate::executor::ActorRunner;
 use crate::JoinHandle;
 use crate::stage::Stage;
@@ -29,12 +28,13 @@ where
         let (tx, rx) = bounded_future_both(A::MAIL_BOX_SIZE as usize);
         let addr = Arc::new(Address::new(tx));
 
-        let context = Arc::new(Context {
-            self_addr: Arc::downgrade(&addr),
-            stage: stage.clone(),
-            alive_count: AtomicUsize::new(0),
-            recipient: rx
-        });
+        let context = Context {
+            inner: Arc::new(Inner {
+                self_addr: Arc::downgrade(&addr),
+                stage: stage.clone(),
+                recipient: rx
+            })
+        };
 
         let join_handles = (0..quantity)
             .map(|_| {

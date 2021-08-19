@@ -4,6 +4,7 @@ use async_trait::async_trait;
 
 use crate::actor::Actor;
 use crate::envelope::RespRx;
+use crate::Context;
 
 pub trait Message: Debug + Send {}
 
@@ -15,7 +16,7 @@ where
 {
     type Output: Send + 'static;
 
-    async fn handle(&mut self, msg: M) -> Self::Output;
+    async fn handle(&mut self, msg: M, ctx: &Context<Self>) -> Self::Output;
 }
 
 pub struct ResponseHandle<O>(pub(crate) RespRx<O>);

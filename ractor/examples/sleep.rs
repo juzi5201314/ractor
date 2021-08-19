@@ -12,6 +12,7 @@ struct Sleep(u64);
 #[derive(Default)]
 struct MyActor;
 
+#[async_trait::async_trait]
 impl Actor for MyActor {
     const MAIL_BOX_SIZE: u32 = 2;
 
@@ -24,7 +25,7 @@ impl Actor for MyActor {
 impl MessageHandler<Sleep> for MyActor {
     type Output = ();
 
-    async fn handle(&mut self, msg: Sleep) -> Self::Output {
+    async fn handle(&mut self, msg: Sleep, _ctx: &Context<Self>) -> Self::Output {
         tokio::time::sleep(Duration::from_secs(msg.0)).await
     }
 }

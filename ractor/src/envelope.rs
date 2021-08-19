@@ -5,9 +5,10 @@ use futures::future::BoxFuture;
 
 use crate::actor::Actor;
 use crate::message::{Message, MessageHandler};
+use crate::Context;
 
 pub enum Envelope<A :?Sized> {
-    Task(Box<dyn FnOnce(&mut A) -> BoxFuture<()> + Send>),
+    Task(Box<dyn for<'a> FnOnce(&'a mut A, &'a Context<A>) -> BoxFuture<'a, ()> + Send>),
     Stop,
 }
 
@@ -24,9 +25,9 @@ where
     {
         let (tx, rx) = mpsc::bounded_tx_blocking_rx_future(1);
         (
-            Envelope::Task(Box::new(move |actor: &mut A| {
+            Envelope::Task(Box::new(move |actor: &mut A, ctx: &Context<A>| {
                 Box::pin(async move {
-                    let resp = <A as MessageHandler<M>>::handle(actor, msg).await;
+                    let resp = <A as MessageHandler<M>>::handle(actor, msg, ctx).await;
                     tx.try_send(resp)
                         .map_err(|_| (/* Response is discarded */))
                         .ok();

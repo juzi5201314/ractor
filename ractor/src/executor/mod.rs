@@ -1,6 +1,3 @@
-use std::sync::Arc;
-use std::sync::atomic::Ordering;
-
 pub use executor::{Executor, JoinHandle};
 
 use crate::actor::Actor;
@@ -16,7 +13,7 @@ mod executor;
 
 pub struct ActorRunner<A> {
     pub actor: A,
-    pub context: Arc<Context<A>>,
+    pub context: Context<A>,
 }
 
 impl<A> ActorRunner<A>
@@ -25,17 +22,15 @@ where
 {
     pub async fn run(mut self) -> () {
         self.actor.started(&self.context).await;
-        self.context.alive_count.fetch_add(1, Ordering::SeqCst);
 
         while let Ok(envelope) = self.context.recipient.recv().await {
             match envelope {
                 Envelope::Task(handle) => {
-                    (handle)(&mut self.actor).await;
+                    (handle)(&mut self.actor, &self.context).await;
                 }
                 Envelope::Stop => break,
             }
         }
-        self.context.alive_count.fetch_sub(1, Ordering::SeqCst);
         self.actor.stopped(&self.context).await;
     }
 }

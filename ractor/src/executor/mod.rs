@@ -1,93 +1,42 @@
-use std::future::Future;
-use std::ops::Deref;
+use std::sync::Arc;
+use std::sync::atomic::Ordering;
+
+pub use executor::{Executor, JoinHandle};
 
 use crate::actor::Actor;
+use crate::context::Context;
 use crate::envelope::{Envelope, MailBoxRx};
-use crate::stage::Scenes;
 
-#[cfg(feature = "tokio-runtime")]
-pub use self::tokio::*;
+#[cfg(all(feature = "use_tokio", feature = "use_async-std"))]
+compile_error!("Only one of the asynchronous executors can be selected.");
 
-#[cfg(feature = "tokio-runtime")]
-mod tokio;
+#[cfg_attr(feature = "use_tokio", path = "tokio.rs")]
+#[cfg_attr(feature = "use_async-std", path = "async_std.rs")]
+mod executor;
 
-pub trait Executor<H>: Deref<Target = H> + Send + 'static {
-    fn handle(&self) -> &H
-    where
-        H: ExecutorHandle;
-
-    fn shutdown(self)
-    where
-        Self: Sized,
-    {}
-}
-
-pub trait ExecutorHandle: Send + Sync + Clone + 'static {
-    fn spawn_async<F>(&self, task: F) -> Box<dyn JoinHandle<F::Output>>
-    where
-        F: Future + Send + 'static,
-        F::Output: Send + 'static;
-
-    fn spawn_blocking<F, O>(&self, task: F) -> O
-        where
-            F: FnOnce() -> O;
-
-    fn block_on<F>(&self, fut: F) -> F::Output
-        where
-            F: Future;
-
-    #[inline]
-    fn start_show<A>(&self, show: Show<A, Self>) where A: Actor {
-        self.spawn_async(Show::_default(show));
-    }
-}
-
-#[derive(Debug)]
-pub struct JoinError {
-    msg: String,
-}
-
-#[async_trait::async_trait]
-pub trait JoinHandle<O> {
-    async fn join(self) -> Result<O, JoinError>;
-
-    fn abort(&self);
-}
-
-pub struct Show<A, H> {
+pub struct ActorRunner<A> {
     pub rx: MailBoxRx<A>,
     pub actor: A,
-    pub scenes: Scenes<H>,
+    pub context: Arc<Context<A>>,
 }
 
-impl<A, H> Show<A, H>
+impl<A> ActorRunner<A>
 where
-    H: ExecutorHandle,
     A: Actor,
 {
-    pub fn new(rx: MailBoxRx<A>, actor: A, scenes: Scenes<H>) -> Self {
-        Show { rx, actor, scenes }
-    }
-
-    async fn _default(mut self) -> () {
-        let scenes = self.scenes.clone();
-
-        self.actor.started(&scenes).await;
+    pub async fn run(mut self) -> () {
+        self.actor.started().await;
+        self.context.alive_count.fetch_add(1, Ordering::SeqCst);
 
         while let Ok(envelope) = self.rx.recv().await {
             match envelope {
-                Envelope::Sync(handle) => {
-                    scenes
-                        .spawn_blocking(|| {
-                            (handle)(&mut self.actor);
-                        });
-                }
-                Envelope::Async(handle) => {
+                Envelope::Task(handle) => {
                     (handle)(&mut self.actor).await;
                 }
-                Envelope::Stop => break
+                Envelope::Stop => break,
             }
         }
-        self.actor.stopped(&scenes).await;
+        self.context.alive_count.fetch_sub(1, Ordering::SeqCst);
+        self.actor.stopped().await;
     }
 }

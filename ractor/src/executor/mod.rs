@@ -1,3 +1,7 @@
+use std::panic::AssertUnwindSafe;
+
+use futures::FutureExt;
+
 pub use executor::{Executor, JoinHandle};
 
 use crate::actor::Actor;
@@ -26,7 +30,15 @@ where
         while let Ok(envelope) = self.context.recipient.recv().await {
             match envelope {
                 Envelope::Task(handle) => {
-                    (handle)(&mut self.actor, &self.context).await;
+                    match AssertUnwindSafe((handle)(&mut self.actor, &self.context))
+                        .catch_unwind()
+                        .await
+                    {
+                        Ok(_) => {}
+                        Err(err) => {
+                            self.actor.catch_unwind(err);
+                        }
+                    }
                 }
                 Envelope::Stop => break,
             }

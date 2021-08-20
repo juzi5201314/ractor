@@ -1,4 +1,5 @@
 use crate::context::Context;
+use std::any::Any;
 
 #[async_trait::async_trait]
 pub trait Actor: Send + 'static {
@@ -9,4 +10,11 @@ pub trait Actor: Send + 'static {
     async fn started(&mut self, _ctx: &Context<Self>) {}
 
     async fn stopped(&mut self, _ctx: &Context<Self>) {}
+
+    /// 捕获panic
+    /// 用于发生意外的时候处理actor
+    /// 不建议也不应该用于错误处理
+    ///
+    /// 目前只会在handle message时捕获
+    fn catch_unwind(&mut self, _err: Box<dyn Any + Send>) {}
 }

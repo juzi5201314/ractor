@@ -1,39 +1,50 @@
 use std::fmt::{Debug, Formatter};
 
 use async_trait::async_trait;
-use futures::channel::oneshot;
 
 use crate::actor::Actor;
+use crate::Context;
+use crate::envelope::RespRx;
 
 pub trait Message: Debug + Send {}
 
+#[async_trait]
 pub trait MessageHandler<M>: Sized + Send
 where
     Self: Actor,
     M: Message,
 {
-    type Output: Send;
+    type Output: Send + 'static;
+    type Error: Send + 'static;
 
-    fn handle(&mut self, msg: M) -> Self::Output;
+    /// 处理消息
+    ///
+    /// # Error
+    /// `Self::Error`表示在处理消息时发生的错误, 并在返回`Error`时将`Error`发送到`handle_error`处理.
+    ///
+    /// ### 为什么我们有时候需要`Output = Result<..., Error1>`?
+    /// 在返回`Self::Error`的时候会使用`handle_error`处理这个错误.
+    /// 而将`Output`设置为`Result`的时候, `Result<..., Error1>`将会原封不动发送到`ResponseHandle`, 使用`recv`接收.
+    ///
+    /// 也就是说`Self::Error`适用于你发送了消息但不需要接收响应的时候处理错误,
+    /// 而`Output = Result<..., Error1>`适用于在等待接收响应之后处理错误.
+    async fn handle(&mut self, msg: M, ctx: &Context<Self>) -> Result<Self::Output, Self::Error>;
+
+    /// 处理错误
+    async fn handle_error(&mut self, _err: Self::Error, _ctx: &Context<Self>) {}
 }
 
-#[async_trait]
-pub trait AsyncMessageHandler<M>: Sized + Send
-where
-    Self: Actor,
-    M: Message,
-{
-    type Output: Send;
-
-    async fn handle(&mut self, msg: M) -> Self::Output;
-}
-
-pub struct ResponseHandle<O>(pub(crate) oneshot::Receiver<O>);
+pub struct ResponseHandle<O>(pub(crate) RespRx<O>);
 
 impl<O> ResponseHandle<O> {
     #[inline]
     pub async fn recv(self) -> Result<O, HandlerPanic> {
-        self.0.await.map_err(|_| HandlerPanic)
+        self.0.recv().await.map_err(|_| HandlerPanic)
+    }
+
+    #[inline]
+    pub fn try_recv(&self) -> Result<O, HandlerPanic> {
+        self.0.try_recv().map_err(|_| HandlerPanic)
     }
 }
 
@@ -44,92 +55,3 @@ impl Debug for HandlerPanic {
         write!(f, "HandlerPanic")
     }
 }
-
-/*
-pub trait MessageResponse: Sized {
-    type Output;
-    fn into_response<H>(self, stage: Scenes<H>) -> Response<Self::Output>
-    where
-        H: ExecutorHandle;
-}
-
-pub struct Response<O>(O);
-
-
-
-unsafe impl<O> Send for Response<O> {}
-
-macro_rules! impl_type_sync {
-    ($_ty:ty) => {
-        impl MessageResponse for $_ty {
-            type Output = $_ty;
-
-            fn into_response<H>(self, scenes: Scenes<H>) -> Response<Self::Output>
-            where
-                H: ExecutorHandle,
-            {
-                Response(self)
-            }
-        }
-    };
-}
-
-impl_type_sync!(());
-impl_type_sync!(String);
-impl_type_sync!(&'static str);
-impl_type_sync!(isize);
-impl_type_sync!(i8);
-impl_type_sync!(i16);
-impl_type_sync!(i32);
-impl_type_sync!(i64);
-impl_type_sync!(i128);
-impl_type_sync!(usize);
-impl_type_sync!(u8);
-impl_type_sync!(u16);
-impl_type_sync!(u32);
-impl_type_sync!(u64);
-impl_type_sync!(u128);
-impl_type_sync!(f32);
-impl_type_sync!(f64);
-impl_type_sync!(char);
-
-impl<T> MessageResponse for Option<T>
-where
-    T: Send + 'static,
-{
-    type Output = Option<T>;
-
-    fn into_response<H>(self, scenes: Scenes<H>) -> Response<Self::Output>
-    where
-        H: ExecutorHandle,
-    {
-        Response(self)
-    }
-}
-
-impl<T, E> MessageResponse for Result<T, E>
-where
-    T: Send + 'static,
-    E: Send + 'static,
-{
-    type Output = Result<T, E>;
-
-    fn into_response<H>(self, scenes: Scenes<H>) -> Response<Self::Output>
-    where
-        H: ExecutorHandle,
-    {
-        Response(self)
-    }
-}
-
-#[cfg(feature = "specialization")]
-default impl<T: MessageResponse<Output = T>> MessageResponse for T {
-    type Output = T;
-
-    default fn into_response<H>(self, scenes: Scenes<H>) -> Response<Self::Output>
-    where
-        H: ExecutorHandle,
-    {
-        Response(self)
-    }
-}*/

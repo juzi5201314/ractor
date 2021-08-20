@@ -1,158 +1,105 @@
+use std::future::Future;
+use std::ops::Deref;
+use std::pin::Pin;
+use std::sync::Arc;
+use std::task::Poll;
+
 use crossfire::mpmc::bounded_future_both;
-use futures::channel::oneshot;
+use futures::Stream;
+use futures::stream::FuturesUnordered;
+use futures::future::join_all;
 
-use crate::actor::{Actor, Address};
-use crate::envelope::Envelope;
-use crate::error::{ChannelSendError, ChannelTrySendError};
-use crate::executor::{ExecutorHandle, Show};
-use crate::message::{AsyncMessageHandler, Message, MessageHandler, ResponseHandle};
-use crate::stage::Scenes;
+use crate::actor::Actor;
+use crate::address::Address;
+use crate::context::{Context, Inner};
+use crate::executor::ActorRunner;
+use crate::JoinHandle;
+use crate::stage::Stage;
 
-pub struct Broker<A, H> {
-    #[allow(unused)]
-    scenes: Scenes<H>,
-    addr: Address<A>,
+pub struct Broker<A> {
+    addr: Arc<Address<A>>,
+    actor_runner_handles: FuturesUnordered<JoinHandle<()>>,
 }
 
-impl<A, H> Broker<A, H>
+impl<A> Broker<A>
 where
     A: Actor,
-    H: ExecutorHandle,
 {
-    pub fn spawn<F>(scenes: &Scenes<H>, actor_creator: F, quantity: usize) -> Broker<A, H>
-    where
-        F: Fn() -> A,
-    {
+    pub async fn spawn(stage: &Stage, quantity: usize) -> Broker<A> {
         let (tx, rx) = bounded_future_both(A::MAIL_BOX_SIZE as usize);
-        let addr = Address::new(tx);
-        for _ in 0..quantity {
-            scenes.show(Show::new(rx.clone(), actor_creator(), scenes.clone()));
-        }
+        let addr = Arc::new(Address::new(tx));
+
+        let context = Context {
+            inner: Arc::new(Inner {
+                self_addr: Arc::downgrade(&addr),
+                stage: stage.clone(),
+                recipient: rx
+            })
+        };
+
+        let join_handles = join_all((0..quantity)
+            .map(|_| A::create(&context)))
+            .await
+            .into_iter()
+            .map(|actor| {
+                stage.run(ActorRunner {
+                    actor,
+                    context: context.clone(),
+                })
+            })
+            .collect::<FuturesUnordered<JoinHandle<()>>>();
 
         Broker {
-            scenes: scenes.clone(),
             addr,
+            actor_runner_handles: join_handles,
         }
-    }
-
-    #[inline]
-    pub async fn stop(&self) -> bool {
-        self.addr.send(Envelope::Stop).await.is_ok()
-    }
-
-    #[inline]
-    pub fn blocking_stop(&self) -> bool {
-        self.addr.send_blocking(Envelope::Stop).is_ok()
-    }
-
-    #[inline]
-    pub fn try_stop(&self) -> Result<(), ChannelTrySendError<Envelope<A>>> {
-        self.addr.try_send(Envelope::Stop).map_err(Into::<ChannelTrySendError<_>>::into)
-    }
-
-    #[inline]
-    pub async fn send_envelope<O>(
-        &self,
-        (envelope, rx): (Envelope<A>, oneshot::Receiver<O>),
-    ) -> Result<ResponseHandle<O>, ChannelSendError<Envelope<A>>> {
-        self.addr
-            .send(envelope)
-            .await
-            .map_err::<ChannelSendError<Envelope<A>>, _>(Into::into)?;
-        Ok(ResponseHandle(rx))
-    }
-
-    pub async fn send<M>(
-        &self,
-        msg: M,
-    ) -> Result<ResponseHandle<<A as MessageHandler<M>>::Output>, ChannelSendError<Envelope<A>>>
-    where
-        M: Message + 'static,
-        A: MessageHandler<M>,
-    {
-        self.send_envelope(Envelope::pack(msg)).await
-    }
-
-    pub async fn send_async<M>(
-        &self,
-        msg: M,
-    ) -> Result<ResponseHandle<<A as AsyncMessageHandler<M>>::Output>, ChannelSendError<Envelope<A>>>
-    where
-        M: Message + 'static,
-        A: AsyncMessageHandler<M>,
-    {
-        self.send_envelope(Envelope::pack_async(msg)).await
-    }
-
-    #[inline]
-    pub fn blocking_send_envelope<O>(
-        &self,
-        (envelope, rx): (Envelope<A>, oneshot::Receiver<O>),
-    ) -> Result<ResponseHandle<O>, ChannelSendError<Envelope<A>>> {
-        self.addr
-            .send_blocking(envelope)
-            .map_err::<ChannelSendError<Envelope<A>>, _>(Into::into)?;
-        Ok(ResponseHandle(rx))
-    }
-
-    pub fn blocking_send<M>(
-        &self,
-        msg: M,
-    ) -> Result<ResponseHandle<<A as MessageHandler<M>>::Output>, ChannelSendError<Envelope<A>>>
-    where
-        M: Message + 'static,
-        A: MessageHandler<M>,
-    {
-        self.blocking_send_envelope(Envelope::pack(msg))
-    }
-
-    pub fn blocking_send_async<M>(
-        &self,
-        msg: M,
-    ) -> Result<ResponseHandle<<A as AsyncMessageHandler<M>>::Output>, ChannelSendError<Envelope<A>>>
-    where
-        M: Message + 'static,
-        A: AsyncMessageHandler<M>,
-    {
-        self.blocking_send_envelope(Envelope::pack_async(msg))
-    }
-
-    #[inline]
-    pub fn try_send_envelope<O>(
-        &self,
-        (envelope, rx): (Envelope<A>, oneshot::Receiver<O>),
-    ) -> Result<ResponseHandle<O>, ChannelTrySendError<Envelope<A>>> {
-        self.addr
-            .try_send(envelope)
-            .map_err::<ChannelTrySendError<Envelope<A>>, _>(Into::into)?;
-        Ok(ResponseHandle(rx))
-    }
-
-    pub fn try_send<M>(
-        &self,
-        msg: M,
-    ) -> Result<ResponseHandle<<A as MessageHandler<M>>::Output>, ChannelTrySendError<Envelope<A>>>
-    where
-        M: Message + 'static,
-        A: MessageHandler<M>,
-    {
-        self.try_send_envelope(Envelope::pack(msg))
-    }
-
-    pub fn try_send_async<M>(
-        &self,
-        msg: M,
-    ) -> Result<
-        ResponseHandle<<A as AsyncMessageHandler<M>>::Output>,
-        ChannelTrySendError<Envelope<A>>,
-    >
-    where
-        M: Message + 'static,
-        A: AsyncMessageHandler<M>,
-    {
-        self.try_send_envelope(Envelope::pack_async(msg))
     }
 }
 
-unsafe impl<A, H> Send for Broker<A, H> {}
-unsafe impl<A, H> Sync for Broker<A, H> {}
+impl<A> Broker<A>
+where
+    A: Actor,
+{
+    #[cfg(feature = "use_tokio")]
+    pub async fn wait_for_actors(&mut self) -> WaitForActors<'_> {
+        WaitForActors(&mut self.actor_runner_handles)
+    }
+
+    #[cfg(feature = "use_async-std")]
+    pub async fn wait_for_actors(&self) {
+        futures::future::join_all(&self.actor_runner_handles).await
+    }
+
+    pub fn abort(&self) {
+        for handle in &self.actor_runner_handles {
+            #[cfg(feature = "use_async-std")]
+            handle.cancel();
+            #[cfg(feature = "use_tokio")]
+            handle.abort();
+        }
+    }
+}
+
+impl<A> Deref for Broker<A> {
+    type Target = Address<A>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.addr
+    }
+}
+
+pub struct WaitForActors<'a>(&'a mut FuturesUnordered<JoinHandle<()>>);
+
+impl<'a> Future for WaitForActors<'a> {
+    type Output = ();
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        match Pin::new(&mut self.0).poll_next(cx) {
+            Poll::Ready(opt) => match opt {
+                None => Poll::Ready(()),
+                Some(res) => Poll::Pending, // todo: error handling
+            },
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}

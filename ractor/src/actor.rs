@@ -1,49 +1,20 @@
-use std::ops::Deref;
-
-use crate::envelope::MailBoxTx;
-use crate::{Scenes, ExecutorHandle};
+use crate::context::Context;
+use std::any::Any;
 
 #[async_trait::async_trait]
-pub trait Actor: Send + Unpin + 'static {
+pub trait Actor: Send + 'static {
     const MAIL_BOX_SIZE: u32;
 
-    async fn started<H>(&mut self, _scenes: &Scenes<H>) where H: ExecutorHandle {}
+    async fn create(_ctx: &Context<Self>) -> Self where Self: Sized;
 
-    async fn stopped<H>(&mut self, _scenes: &Scenes<H>) where H: ExecutorHandle {}
+    async fn started(&mut self, _ctx: &Context<Self>) {}
 
-    fn error_handle() {}
-}
+    async fn stopped(&mut self, _ctx: &Context<Self>) {}
 
-pub trait ActorCreator {
-    fn create() -> Self
-        where
-            Self: Sized;
-}
-
-impl<T> ActorCreator for T where T: Default {
-    #[inline]
-    fn create() -> Self where Self: Sized {
-        Default::default()
-    }
-}
-
-#[derive(Clone)]
-pub struct Address<A> {
-    sender: MailBoxTx<A>,
-}
-
-impl<'a, A> Deref for Address<A> {
-    type Target = MailBoxTx<A>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.sender
-    }
-}
-
-impl<A> Address<A> {
-    #[inline]
-    pub fn new(sender: MailBoxTx<A>) -> Self {
-        Address { sender }
-    }
+    /// 捕获panic
+    /// 用于发生意外的时候处理actor
+    /// 不建议也不应该用于错误处理
+    ///
+    /// 目前只会在handle message时捕获
+    fn catch_unwind(&mut self, _err: Box<dyn Any + Send>) {}
 }

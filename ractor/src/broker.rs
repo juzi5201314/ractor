@@ -5,15 +5,15 @@ use std::sync::Arc;
 use std::task::Poll;
 
 use crossfire::mpmc::bounded_future_both;
+use futures::future::join_all;
 use futures::Stream;
 use futures::stream::FuturesUnordered;
-use futures::future::join_all;
+use tokio::task::JoinHandle;
 
 use crate::actor::Actor;
 use crate::address::Address;
 use crate::context::{Context, Inner};
 use crate::executor::ActorRunner;
-use crate::JoinHandle;
 use crate::stage::Stage;
 
 pub struct Broker<A> {
@@ -60,21 +60,12 @@ impl<A> Broker<A>
 where
     A: Actor,
 {
-    #[cfg(feature = "use_tokio")]
     pub async fn wait_for_actors(&mut self) -> WaitForActors<'_> {
         WaitForActors(&mut self.actor_runner_handles)
     }
 
-    #[cfg(feature = "use_async-std")]
-    pub async fn wait_for_actors(&self) {
-        futures::future::join_all(&self.actor_runner_handles).await
-    }
-
     pub fn abort(&self) {
         for handle in &self.actor_runner_handles {
-            #[cfg(feature = "use_async-std")]
-            handle.cancel();
-            #[cfg(feature = "use_tokio")]
             handle.abort();
         }
     }

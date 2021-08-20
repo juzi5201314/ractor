@@ -1,8 +1,7 @@
 use std::future::Future;
 
 use tokio::runtime::Handle;
-
-pub type JoinHandle<T> = tokio::task::JoinHandle<T>;
+use tokio::task::JoinHandle;
 
 #[derive(Clone)]
 pub struct Executor {
@@ -29,7 +28,7 @@ impl Executor {
     pub fn spawn_blocking<F, O>(&self, task: F) -> JoinHandle<O>
     where
         F: FnOnce() -> O + Send + 'static,
-        O: Send + 'static
+        O: Send + 'static,
     {
         self.handle.spawn_blocking(task)
     }

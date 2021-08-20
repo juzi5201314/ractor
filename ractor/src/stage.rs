@@ -1,6 +1,8 @@
+use tokio::task::JoinHandle;
+
 use crate::actor::Actor;
 use crate::broker::Broker;
-use crate::executor::{Executor, JoinHandle, ActorRunner};
+use crate::executor::{ActorRunner, Executor};
 
 #[derive(Clone)]
 pub struct Stage {

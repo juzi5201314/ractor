@@ -2,7 +2,7 @@ pub use actor::Actor;
 pub use address::Address;
 pub use broker::Broker;
 pub use context::Context;
-pub use executor::{Executor, JoinHandle};
+pub use executor::Executor;
 pub use message::{MessageHandler, ResponseHandle};
 #[cfg(feature = "derive")]
 pub use ractor_derive::*;

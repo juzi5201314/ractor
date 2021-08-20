@@ -16,7 +16,7 @@ struct MyActor;
 impl Actor for MyActor {
     const MAIL_BOX_SIZE: u32 = 2;
 
-    fn create(_ctx: &Context<Self>) -> Self where Self: Sized {
+    async fn create(_ctx: &Context<Self>) -> Self where Self: Sized {
         MyActor
     }
 }
@@ -36,7 +36,7 @@ impl MessageHandler<Sleep> for MyActor {
 async fn main() {
     let stage = Stage::from_handle(Handle::current());
 
-    let my_actor = stage.spawn::<MyActor>(100);
+    let my_actor = stage.spawn::<MyActor>(100).await;
 
     // Taking into account other costs, it should be completed within 2.2 seconds
     let res = timeout(

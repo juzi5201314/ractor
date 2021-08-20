@@ -20,11 +20,11 @@ impl Stage {
     }
 
     #[inline]
-    pub fn spawn<A>(&self, quantity: usize) -> Broker<A>
+    pub async fn spawn<A>(&self, quantity: usize) -> Broker<A>
         where
             A: Actor,
     {
-        Broker::spawn(self, quantity)
+        Broker::spawn(self, quantity).await
     }
 
     #[inline]

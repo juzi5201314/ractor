@@ -7,6 +7,7 @@ use std::task::Poll;
 use crossfire::mpmc::bounded_future_both;
 use futures::Stream;
 use futures::stream::FuturesUnordered;
+use futures::future::join_all;
 
 use crate::actor::Actor;
 use crate::address::Address;
@@ -24,7 +25,7 @@ impl<A> Broker<A>
 where
     A: Actor,
 {
-    pub fn spawn(stage: &Stage, quantity: usize) -> Broker<A> {
+    pub async fn spawn(stage: &Stage, quantity: usize) -> Broker<A> {
         let (tx, rx) = bounded_future_both(A::MAIL_BOX_SIZE as usize);
         let addr = Arc::new(Address::new(tx));
 
@@ -36,10 +37,13 @@ where
             })
         };
 
-        let join_handles = (0..quantity)
-            .map(|_| {
+        let join_handles = join_all((0..quantity)
+            .map(|_| A::create(&context)))
+            .await
+            .into_iter()
+            .map(|actor| {
                 stage.run(ActorRunner {
-                    actor: A::create(&context),
+                    actor,
                     context: context.clone(),
                 })
             })

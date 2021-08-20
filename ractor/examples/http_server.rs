@@ -3,20 +3,19 @@ use std::convert::Infallible;
 use hyper::server::conn::Http;
 use hyper::service::service_fn;
 use hyper::{Body, Request, Response};
-use mimalloc::MiMalloc;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Handle;
 
 use ractor::{Actor, Context, Message, MessageHandler, Stage};
 
 #[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
+static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;
 
 #[tokio::main]
 async fn main() {
     let stage = Stage::from_handle(Handle::current());
 
-    let my_actor = stage.spawn::<MyActor>(10000);
+    let my_actor = stage.spawn::<MyActor>(10000).await;
 
     tokio::spawn(async move {
         let addr = "127.0.0.1:7070";
@@ -37,10 +36,11 @@ async fn main() {
 #[derive(Default)]
 struct MyActor;
 
+#[async_trait::async_trait]
 impl Actor for MyActor {
     const MAIL_BOX_SIZE: u32 = 10;
 
-    fn create(_ctx: &Context<Self>) -> Self
+    async fn create(_ctx: &Context<Self>) -> Self
     where
         Self: Sized,
     {
@@ -56,7 +56,7 @@ impl MessageHandler<Req> for MyActor {
     type Output = ();
 
     #[inline]
-    async fn handle(&mut self, Req(stream): Req) -> Self::Output {
+    async fn handle(&mut self, Req(stream): Req, _ctx: &Context<Self>) -> Self::Output {
         if let Err(http_err) = Http::new()
             .serve_connection(stream, service_fn(hello))
             .await
@@ -66,6 +66,7 @@ impl MessageHandler<Req> for MyActor {
     }
 }
 
+#[inline]
 async fn hello(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
     Ok(Response::new(Body::from("Hello World!")))
 }

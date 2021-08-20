@@ -3,8 +3,8 @@ use std::fmt::{Debug, Formatter};
 use async_trait::async_trait;
 
 use crate::actor::Actor;
-use crate::envelope::RespRx;
 use crate::Context;
+use crate::envelope::RespRx;
 
 pub trait Message: Debug + Send {}
 
@@ -15,8 +15,23 @@ where
     M: Message,
 {
     type Output: Send + 'static;
+    type Error: Send + 'static;
 
-    async fn handle(&mut self, msg: M, ctx: &Context<Self>) -> Self::Output;
+    /// 处理消息
+    ///
+    /// # Error
+    /// `Self::Error`表示在处理消息时发生的错误, 并在返回`Error`时将`Error`发送到`handle_error`处理.
+    ///
+    /// ### 为什么我们有时候需要`Output = Result<..., Error1>`?
+    /// 在返回`Self::Error`的时候会使用`handle_error`处理这个错误.
+    /// 而将`Output`设置为`Result`的时候, `Result<..., Error1>`将会原封不动发送到`ResponseHandle`, 使用`recv`接收.
+    ///
+    /// 也就是说`Self::Error`适用于你发送了消息但不需要接收响应的时候处理错误,
+    /// 而`Output = Result<..., Error1>`适用于在等待接收响应之后处理错误.
+    async fn handle(&mut self, msg: M, ctx: &Context<Self>) -> Result<Self::Output, Self::Error>;
+
+    /// 处理错误
+    async fn handle_error(&mut self, _err: Self::Error, _ctx: &Context<Self>) {}
 }
 
 pub struct ResponseHandle<O>(pub(crate) RespRx<O>);

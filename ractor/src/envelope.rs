@@ -4,10 +4,10 @@ use crossfire::mpsc::SharedSenderBRecvF;
 use futures::future::BoxFuture;
 
 use crate::actor::Actor;
-use crate::message::{Message, MessageHandler};
 use crate::Context;
+use crate::message::{Message, MessageHandler};
 
-pub enum Envelope<A :?Sized> {
+pub enum Envelope<A: ?Sized> {
     Task(Box<dyn for<'a> FnOnce(&'a mut A, &'a Context<A>) -> BoxFuture<'a, ()> + Send>),
     Stop,
 }
@@ -16,9 +16,7 @@ impl<A> Envelope<A>
 where
     A: Actor,
 {
-    pub(crate) fn pack<M>(
-        msg: M,
-    ) -> (Envelope<A>, RespRx<<A as MessageHandler<M>>::Output>)
+    pub(crate) fn pack<M>(msg: M) -> (Envelope<A>, RespRx<<A as MessageHandler<M>>::Output>)
     where
         M: Message + 'static,
         A: MessageHandler<M>,
@@ -27,10 +25,17 @@ where
         (
             Envelope::Task(Box::new(move |actor: &mut A, ctx: &Context<A>| {
                 Box::pin(async move {
-                    let resp = <A as MessageHandler<M>>::handle(actor, msg, ctx).await;
-                    tx.try_send(resp)
-                        .map_err(|_| (/* Response is discarded */))
-                        .ok();
+                    let resp_res = <A as MessageHandler<M>>::handle(actor, msg, ctx).await;
+                    match resp_res {
+                        Err(err) => {
+                            <A as MessageHandler<M>>::handle_error(actor, err, ctx).await;
+                        }
+                        Ok(resp) => {
+                            tx.try_send(resp)
+                                .map_err(|_| (/* Response is discarded */))
+                                .ok();
+                        }
+                    }
                 })
             })),
             rx,

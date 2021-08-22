@@ -5,7 +5,7 @@
 > 一个actor模型框架. 用于我个人学习与研究.
 
 ## TODO
-* 使用远程地址调用.(就像akka)(进行中)
+* 实现分布式, 使用远程地址给actor发送消息.(就像akka)(进行中)
 * 提供更方便的过程宏, 简化定义`actor`和`message handler`的过程.
 * 使用hyper和tower实现一个基于ractor的http框架.(就像actix-web).
 * 实现`父` `子`结构.(就像akka)

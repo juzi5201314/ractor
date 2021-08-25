@@ -10,27 +10,27 @@ pub struct Stage {
 }
 
 impl Stage {
-    #[cfg(feature = "use_tokio")]
     pub fn from_handle(handle: tokio::runtime::Handle) -> Self {
         Stage::with_executor(Executor::from_handle(handle))
     }
 
     pub fn with_executor(executor: Executor) -> Self {
-        Stage {
-            executor,
-        }
+        Stage { executor }
     }
 
     #[inline]
     pub async fn spawn<A>(&self, quantity: usize) -> Broker<A>
-        where
-            A: Actor,
+    where
+        A: Actor,
     {
         Broker::spawn(self, quantity).await
     }
 
     #[inline]
-    pub fn run<A>(&self, runner: ActorRunner<A>) -> JoinHandle<()> where A: Actor {
+    pub fn run<A>(&self, runner: ActorRunner<A>) -> JoinHandle<()>
+    where
+        A: Actor,
+    {
         self.executor.spawn_async(runner.run())
     }
 }

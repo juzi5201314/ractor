@@ -2,20 +2,23 @@ cargo-features = ["edition2021"]
 
 [package]
 name = "ractor"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 ractor-derive = { version = "0.1", optional = true }
+ractor-rpc = { version = "0.1", optional = true }
 
-tokio = { version = "1.9", features = ["full"], optional = true }
-
+tokio = { version = "1.9", features = ["full"] }
 crossfire = "0.1.5"
 futures = "0.3.16"
 async-trait = "0.1.51"
 thiserror = "1.0"
+serde = { version = "1.0.127", features = ["derive"] }
+url = "2.2.2"
+tokio-tungstenite = { version = "0.15.0", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.9", features = ["full"] }
@@ -27,9 +30,9 @@ snmalloc-rs = { version = "0.2.27", features = ["native-cpu", "cache-friendly"] 
 pprof = { version = "0.5.0", features = ["flamegraph"] }
 
 [features]
-default = ["derive", "use_tokio"]
+default = ["derive", "remote"]
 derive = ["ractor-derive"]
-use_tokio = ["tokio"]
+remote = ["ractor-rpc", "tokio-tungstenite"]
 
 [[bench]]
 name = "fib"

@@ -11,5 +11,6 @@ pub fn message_derive(item: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = derive.generics.split_for_impl();
     (quote! {
         impl #impl_generics ractor::message::Message for #name #ty_generics #where_clause {}
-    }).into()
+    })
+    .into()
 }

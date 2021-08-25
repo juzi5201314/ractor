@@ -3,9 +3,9 @@
 extern crate test;
 
 use std::thread;
-use test::{Bencher, black_box};
+use test::{black_box, Bencher};
 
-use futures::future::{FutureExt, join_all};
+use futures::future::{join_all, FutureExt};
 
 use ractor::{Actor, Context, Message, MessageHandler, Stage};
 use tokio::runtime::Handle;

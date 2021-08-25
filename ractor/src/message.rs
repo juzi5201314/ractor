@@ -3,10 +3,10 @@ use std::fmt::{Debug, Formatter};
 use async_trait::async_trait;
 
 use crate::actor::Actor;
-use crate::Context;
 use crate::envelope::RespRx;
+use crate::Context;
 
-pub trait Message: Debug + Send {}
+pub trait Message: Send {}
 
 #[async_trait]
 pub trait MessageHandler<M>: Sized + Send

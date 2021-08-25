@@ -3,12 +3,16 @@ cargo-features = ["edition2021"]
 [workspace]
 members = [
     "ractor",
-    "ractor-derive"
+    "ractor-derive",
+    "ractor-rpc",
+    "ractor-http"
 ]
 
 [patch.crates-io]
 ractor = { path = "ractor" }
 ractor-derive = { path = "ractor-derive" }
+ractor-rpc = { path = "ractor-rpc" }
+ractor-http = { path = "ractor-http" }
 
 [profile.release]
 lto = true

@@ -1,9 +1,16 @@
+use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::ops::Deref;
+use std::pin::Pin;
 use std::sync::{Arc, Weak};
 
+use futures::{Future, FutureExt};
+
+use ractor_rpc::{deserialize, serialize, RemoteType};
+
 use crate::envelope::MailBoxRx;
-use crate::{Actor, Address, Stage};
+use crate::message::Message;
+use crate::{Actor, Address, LocalAddress, MessageHandler, ResponseHandle, Stage};
 
 pub struct Context<A: ?Sized> {
     pub(crate) inner: Arc<Inner<A>>,
@@ -72,7 +79,51 @@ impl<A> Deref for Context<A> {
 impl<A> Clone for Context<A> {
     fn clone(&self) -> Self {
         Context {
-            inner: Arc::clone(&self.inner)
+            inner: Arc::clone(&self.inner),
         }
+    }
+}
+
+#[derive(Default)]
+pub struct MessageRegister(
+    pub  HashMap<
+        u64,
+        Box<
+            dyn Fn(
+                    &[u8],
+                )
+                    -> Pin<Box<dyn Future<Output = Result<Vec<u8>, ractor_rpc::Error>> + Send>>
+                + Send
+                + Sync,
+        >,
+    >,
+);
+
+impl MessageRegister {
+    pub fn register<M, A>(&mut self, addr: LocalAddress<A>)
+    where
+        M: ?Sized + RemoteType + Message + 'static,
+        A: MessageHandler<M>,
+        A::Output: RemoteType,
+    {
+        self.0.insert(
+            M::identity_id(),
+            Box::new(move |bytes| {
+                let addr = addr.clone();
+                let msg = deserialize::<M>(&bytes);
+                async move {
+                    Ok(serialize(
+                        &addr
+                            .send(msg?)
+                            .await
+                            .map_err(|_| ractor_rpc::Error::ForwardToLocal)?
+                            .recv()
+                            .await
+                            .map_err(|_| ractor_rpc::Error::HandlerPanic)?,
+                    )?)
+                }
+                .boxed()
+            }),
+        );
     }
 }

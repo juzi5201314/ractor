@@ -1,9 +1,9 @@
 use std::time::Duration;
 
-use futures::future::{FutureExt, join_all};
+use futures::future::{join_all, FutureExt};
 use tokio::time::timeout;
 
-use ractor::{Actor, Message, MessageHandler, Stage, Context};
+use ractor::{Actor, Address, Context, Message, MessageHandler, Stage};
 use tokio::runtime::Handle;
 
 #[derive(Debug, Message)]
@@ -16,7 +16,10 @@ struct MyActor;
 impl Actor for MyActor {
     const MAIL_BOX_SIZE: u32 = 2;
 
-    async fn create(_ctx: &Context<Self>) -> Self where Self: Sized {
+    async fn create(_ctx: &Context<Self>) -> Self
+    where
+        Self: Sized,
+    {
         MyActor
     }
 }
@@ -24,9 +27,14 @@ impl Actor for MyActor {
 #[async_trait::async_trait]
 impl MessageHandler<Sleep> for MyActor {
     type Output = ();
+    type Error = ();
 
-    async fn handle(&mut self, msg: Sleep, _ctx: &Context<Self>) -> Self::Output {
-        tokio::time::sleep(Duration::from_secs(msg.0)).await
+    async fn handle(
+        &mut self,
+        msg: Sleep,
+        _ctx: &Context<Self>,
+    ) -> Result<Self::Output, Self::Error> {
+        Ok(tokio::time::sleep(Duration::from_secs(msg.0)).await)
     }
 }
 
@@ -37,21 +45,21 @@ async fn main() {
     let stage = Stage::from_handle(Handle::current());
 
     let my_actor = stage.spawn::<MyActor>(100).await;
+    let addr = match my_actor.addr() {
+        Address::Local(addr) => addr,
+        _ => unreachable!(),
+    };
 
     // Taking into account other costs, it should be completed within 2.2 seconds
-    let res = timeout(
-        Duration::from_secs_f64(2.2),
-        async {
-            // send 200 sleep message.
-            let resp_handles = join_all(
-                (0..200).map(|_| my_actor.send(Sleep(1)).map(|res| res.expect("send failed"))),
-            )
+    let res = timeout(Duration::from_secs_f64(2.2), async {
+        // send 200 sleep message.
+        let resp_handles =
+            join_all((0..200).map(|_| addr.send(Sleep(1)).map(|res| res.expect("send failed"))))
                 .await;
 
-            join_all(resp_handles.into_iter().map(|handle| handle.recv())).await;
-        },
-    )
-        .await;
+        join_all(resp_handles.into_iter().map(|handle| handle.recv())).await;
+    })
+    .await;
 
     assert!(res.is_ok());
 }

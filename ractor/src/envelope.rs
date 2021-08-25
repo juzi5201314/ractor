@@ -4,8 +4,8 @@ use crossfire::mpsc::SharedSenderBRecvF;
 use futures::future::BoxFuture;
 
 use crate::actor::Actor;
-use crate::Context;
 use crate::message::{Message, MessageHandler};
+use crate::Context;
 
 pub enum Envelope<A: ?Sized> {
     Task(Box<dyn for<'a> FnOnce(&'a mut A, &'a Context<A>) -> BoxFuture<'a, ()> + Send>),

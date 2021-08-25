@@ -1,7 +1,7 @@
 pub use actor::Actor;
-pub use address::Address;
+pub use address::{Address, LocalAddress, RemoteAddress};
 pub use broker::Broker;
-pub use context::Context;
+pub use context::{Context, MessageRegister};
 pub use executor::Executor;
 pub use message::{MessageHandler, ResponseHandle};
 #[cfg(feature = "derive")]

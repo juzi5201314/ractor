@@ -60,7 +60,7 @@ impl<T> ChannelTrySendError<T> {
     pub fn recover(self) -> T {
         match self {
             ChannelTrySendError::Full(t) => t,
-            ChannelTrySendError::Disconnected(t) => t
+            ChannelTrySendError::Disconnected(t) => t,
         }
     }
 }

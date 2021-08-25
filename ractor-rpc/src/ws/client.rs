@@ -4,7 +4,6 @@ use std::sync::Arc;
 use crossfire::mpsc::{RxFuture, SharedSenderBRecvF};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
-use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -14,7 +13,7 @@ use tokio_tungstenite::{connect_async_with_config, MaybeTlsStream, WebSocketStre
 use url::Url;
 
 use crate::ws::WsError;
-use crate::{deserialize, serialize, Message, MessageHeader, RemoteType};
+use crate::{deserialize, serialize, Message, RemoteType};
 
 pub struct Client {
     sink: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, WMessage>,
@@ -53,21 +52,21 @@ impl Client {
             match msg {
                 WMessage::Text(_) => {}
                 WMessage::Binary(msg) => {
-                    let header: MessageHeader = match deserialize(&msg) {
-                        Ok(header) => header,
+                    let msg: Message = match deserialize(&msg) {
+                        Ok(msg) => msg,
                         Err(_) => {
                             dbg!("Unexpected message header. deserialize failed");
                             continue;
                         }
                     };
 
-                    match msg_table.lock().await.remove(&header.unique_id) {
+                    match msg_table.lock().await.remove(&msg.unique_id) {
                         None => {
                             dbg!("Unexpected message header. unique id not found");
                             continue;
                         }
                         Some(resp) => {
-                            resp(&header.payload).unwrap();
+                            resp(&msg.payload).unwrap();
                         }
                     }
                 }

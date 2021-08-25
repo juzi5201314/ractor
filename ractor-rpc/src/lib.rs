@@ -1,11 +1,8 @@
-use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::sync::Arc;
 
 use bincode::Options;
-use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
+use serde::de::DeserializeOwned;
 use uuid::Uuid;
 
 pub use error::Error;
@@ -82,13 +79,6 @@ impl Message {
             unique_id: Uuid::new_v4().as_u128(),
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct MessageHeader {
-    identity_id: u64,
-    unique_id: u128,
-    payload: Vec<u8>,
 }
 
 #[test]

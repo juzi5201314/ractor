@@ -26,9 +26,6 @@ http = "0.2.4"
 hyper = { version = "0.14.11", features = ["full"] }
 snmalloc-rs = { version = "0.2.27", features = ["native-cpu", "cache-friendly"] }
 
-[target.'cfg(not(target_os = "windows"))'.dev-dependencies]
-pprof = { version = "0.5.0", features = ["flamegraph"] }
-
 [features]
 default = ["derive", "remote"]
 derive = ["ractor-derive"]

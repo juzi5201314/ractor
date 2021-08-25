@@ -11,13 +11,13 @@ use futures::Stream;
 use tokio::task::JoinHandle;
 
 use crate::actor::Actor;
-use crate::address::Address;
 use crate::context::{Context, Inner};
 use crate::executor::ActorRunner;
 use crate::stage::Stage;
+use crate::LocalAddress;
 
 pub struct Broker<A> {
-    addr: Arc<Address<A>>,
+    addr: Arc<LocalAddress<A>>,
     actor_runner_handles: FuturesUnordered<JoinHandle<()>>,
 }
 
@@ -27,7 +27,7 @@ where
 {
     pub async fn spawn(stage: &Stage, quantity: usize) -> Broker<A> {
         let (tx, rx) = bounded_future_both(A::MAIL_BOX_SIZE as usize);
-        let addr = Arc::new(Address::local(tx));
+        let addr = Arc::new(LocalAddress::new(tx));
 
         let context = Context {
             inner: Arc::new(Inner {
@@ -60,7 +60,7 @@ where
     A: Actor,
 {
     #[inline]
-    pub fn addr(&self) -> &Address<A> {
+    pub fn addr(&self) -> &LocalAddress<A> {
         &self.addr
     }
 
@@ -76,7 +76,7 @@ where
 }
 
 impl<A> Deref for Broker<A> {
-    type Target = Address<A>;
+    type Target = LocalAddress<A>;
 
     fn deref(&self) -> &Self::Target {
         &self.addr

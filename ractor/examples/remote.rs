@@ -54,10 +54,7 @@ async fn main() {
     let stage = Stage::from_handle(Handle::current());
 
     let my_actor = stage.spawn::<MyActor>(100).await;
-    let local_addr = match my_actor.addr() {
-        Address::Local(addr) => addr,
-        _ => unreachable!(),
-    };
+    let local_addr = my_actor.addr();
     let server_guard = local_addr.clone().upgrade().await.unwrap();
 
     let url = Url::parse(&format!(

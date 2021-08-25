@@ -45,16 +45,12 @@ async fn main() {
     let stage = Stage::from_handle(Handle::current());
 
     let my_actor = stage.spawn::<MyActor>(100).await;
-    let addr = match my_actor.addr() {
-        Address::Local(addr) => addr,
-        _ => unreachable!(),
-    };
 
     // Taking into account other costs, it should be completed within 2.2 seconds
     let res = timeout(Duration::from_secs_f64(2.2), async {
         // send 200 sleep message.
         let resp_handles =
-            join_all((0..200).map(|_| addr.send(Sleep(1)).map(|res| res.expect("send failed"))))
+            join_all((0..200).map(|_| my_actor.send(Sleep(1)).map(|res| res.expect("send failed"))))
                 .await;
 
         join_all(resp_handles.into_iter().map(|handle| handle.recv())).await;

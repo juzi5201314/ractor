@@ -14,3 +14,7 @@
 
 ---
 > 非科班学生, 业余爱好者, 基础差, 如有实现错误欢迎指出.
+
+
+## Remote 基础流程
+![png](./assets/ractor-remote-base.png)

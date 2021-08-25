@@ -18,9 +18,13 @@ mod ws;
 pub type RpcServer = ws::server::Server;
 pub type RpcClient = ws::client::Client;
 
+/// 实现了`RemoteType`表示该类型可以被远程发送或者接收
+/// 为基础类型实现了`RemoteType`
 pub trait RemoteType: Serialize + DeserializeOwned + Send {
     type Identity: Hash;
 
+    /// 唯一标识符
+    /// 应该保证: A.identity() == B.identity() && deserialize::<B>(serialize(A)) && deserialize::<A>(serialize(B))
     fn identity() -> Self::Identity;
 
     // todo: optimize
@@ -67,10 +71,11 @@ pub struct Message {
     pub payload: Vec<u8>,
 }
 
-impl Message
-{
-    pub fn new<T>(ty: T) -> Self where
-        T: RemoteType {
+impl Message {
+    pub fn new<T>(ty: T) -> Self
+    where
+        T: RemoteType,
+    {
         Message {
             identity_id: T::identity_id(),
             payload: serialize(&ty).unwrap(),

@@ -15,7 +15,7 @@ pub trait Actor: Send + 'static {
 
     async fn stopped(&mut self, _ctx: &Context<Self>) {}
 
-    fn register(register: &mut MessageRegister, local_address: LocalAddress<Self>) {}
+    fn register(_register: &mut MessageRegister, _local_address: LocalAddress<Self>) {}
 
     /// 捕获panic
     /// 用于发生意外的时候处理actor

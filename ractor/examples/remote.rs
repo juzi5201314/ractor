@@ -1,6 +1,6 @@
 use tokio::runtime::Handle;
 
-use ractor::{Actor, Address, Context, Message, MessageHandler, RemoteAddress, Stage};
+use ractor::{Actor, Context, Message, MessageHandler, RemoteAddress, Stage};
 use ractor::{LocalAddress, MessageRegister};
 use ractor_rpc::RemoteType;
 use url::Url;

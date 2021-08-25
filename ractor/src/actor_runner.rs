@@ -2,13 +2,9 @@ use std::panic::AssertUnwindSafe;
 
 use futures::FutureExt;
 
-pub use self::tokio::Executor;
-
 use crate::actor::Actor;
 use crate::context::Context;
 use crate::envelope::Envelope;
-
-mod tokio;
 
 pub struct ActorRunner<A> {
     pub actor: A,
@@ -16,8 +12,8 @@ pub struct ActorRunner<A> {
 }
 
 impl<A> ActorRunner<A>
-where
-    A: Actor,
+    where
+        A: Actor,
 {
     pub async fn run(mut self) -> () {
         self.actor.started(&self.context).await;

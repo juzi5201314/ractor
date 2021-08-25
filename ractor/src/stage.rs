@@ -1,21 +1,17 @@
+use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
 
 use crate::actor::Actor;
+use crate::actor_runner::ActorRunner;
 use crate::broker::Broker;
-use crate::executor::{ActorRunner, Executor};
 
 #[derive(Clone)]
-pub struct Stage {
-    pub executor: Executor,
-}
+pub struct Stage;
 
 impl Stage {
-    pub fn from_handle(handle: tokio::runtime::Handle) -> Self {
-        Stage::with_executor(Executor::from_handle(handle))
-    }
-
-    pub fn with_executor(executor: Executor) -> Self {
-        Stage { executor }
+    /// 不再需要传入执行器, `Handle`只是确保在tokio上下文中
+    pub fn from_handle(_handle: Handle) -> Self {
+        Stage
     }
 
     #[inline]
@@ -31,6 +27,6 @@ impl Stage {
     where
         A: Actor,
     {
-        self.executor.spawn_async(runner.run())
+        tokio::spawn(runner.run())
     }
 }

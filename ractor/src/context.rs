@@ -10,7 +10,7 @@ use ractor_rpc::{deserialize, serialize, RemoteType};
 
 use crate::envelope::MailBoxRx;
 use crate::message::Message;
-use crate::{Actor, LocalAddress, MessageHandler, ResponseHandle, Stage};
+use crate::{Actor, LocalAddress, MessageHandler, Stage};
 
 pub struct Context<A: ?Sized> {
     pub(crate) inner: Arc<Inner<A>>,

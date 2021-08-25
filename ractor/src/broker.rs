@@ -12,7 +12,7 @@ use tokio::task::JoinHandle;
 
 use crate::actor::Actor;
 use crate::context::{Context, Inner};
-use crate::executor::ActorRunner;
+use crate::actor_runner::ActorRunner;
 use crate::stage::Stage;
 use crate::LocalAddress;
 

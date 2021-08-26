@@ -18,5 +18,8 @@
 > 
 > 参考: [pony](https://www.ponylang.io/), [akka](https://akka.io/)
 
+## 基础流程
+![png](./assets/ractor-base.png)
+
 ## Remote 基础流程
 ![png](./assets/ractor-remote-base.png)

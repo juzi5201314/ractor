@@ -94,7 +94,14 @@ impl<'a> Future for WaitForActors<'a> {
         match Pin::new(&mut self.0).poll_next(cx) {
             Poll::Ready(opt) => match opt {
                 None => Poll::Ready(()),
-                Some(res) => Poll::Pending, // todo: error handling
+                Some(res) => {
+                    if let Err(err) = res {
+                        if err.is_panic() {
+                            log::warn!("Panic appears during the running of the actor: {}", err)
+                        }
+                    }
+                    Poll::Pending
+                },
             },
             Poll::Pending => Poll::Pending,
         }

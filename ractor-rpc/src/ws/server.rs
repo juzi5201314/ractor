@@ -42,6 +42,9 @@ impl Server {
     }
 
     pub async fn run(self) {
+        // 注意: 在连接数量增多时会占用过多内存, 是否有更好方法不需要保存全部JoinHandle？
+        // 收集所有connection的JoinHandle, 并在结束时终止. 避免server已经关闭但`handle_connection`future还在运行.
+        let mut handles = Vec::new();
         while let Ok((stream, _peer_addr)) = self.tcp_listener.accept().await {
             let stream = match tokio_tungstenite::accept_async_with_config(
                 stream,
@@ -57,8 +60,9 @@ impl Server {
                 }
             };
 
-            tokio::spawn(Self::handle_connection(stream, self.register.clone()));
+            handles.push(tokio::spawn(Self::handle_connection(stream, self.register.clone())));
         }
+        handles.into_iter().for_each(|handle| handle.abort());
     }
 
     async fn handle_connection(stream: WebSocketStream<TcpStream>, register: Arc<MessageRegister>) {

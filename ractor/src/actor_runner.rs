@@ -12,11 +12,45 @@ pub struct ActorRunner<A> {
 }
 
 impl<A> ActorRunner<A>
-    where
-        A: Actor,
+where
+    A: Actor,
 {
     pub async fn run(mut self) -> () {
-        self.actor.started(&self.context).await;
+        #[inline(always)]
+        #[doc(hidden)]
+        async fn _run<A>(this: &mut ActorRunner<A>)
+        where
+            A: Actor,
+        {
+            this.actor.started(&this.context).await;
+
+            while let Ok(envelope) = this.context.recipient.recv().await {
+                match envelope {
+                    Envelope::Task(handle) => {
+                        (handle)(&mut this.actor, &this.context).await;
+                    }
+                    Envelope::Stop => break,
+                }
+            }
+
+            this.actor.stopped(&this.context).await;
+        }
+        let mut restart_count = 0;
+        loop {
+            match AssertUnwindSafe(_run(&mut self)).catch_unwind().await {
+                Ok(_) => break,
+                Err(err) => {
+                    if self.actor.catch_unwind(err) && restart_count < A::MAX_RESTARTS {
+                        restart_count += 1;
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        /*self.actor.started(&self.context).await;
 
         while let Ok(envelope) = self.context.recipient.recv().await {
             match envelope {
@@ -34,6 +68,6 @@ impl<A> ActorRunner<A>
                 Envelope::Stop => break,
             }
         }
-        self.actor.stopped(&self.context).await;
+        self.actor.stopped(&self.context).await;*/
     }
 }

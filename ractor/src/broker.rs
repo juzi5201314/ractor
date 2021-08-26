@@ -13,7 +13,6 @@ use tokio::task::JoinHandle;
 use crate::actor::Actor;
 use crate::context::{Context, Inner};
 use crate::actor_runner::ActorRunner;
-use crate::stage::Stage;
 use crate::LocalAddress;
 
 pub struct Broker<A> {
@@ -25,14 +24,13 @@ impl<A> Broker<A>
 where
     A: Actor,
 {
-    pub async fn spawn(stage: &Stage, quantity: usize) -> Broker<A> {
+    pub async fn spawn(quantity: usize) -> Broker<A> {
         let (tx, rx) = bounded_future_both(A::MAIL_BOX_SIZE as usize);
         let addr = Arc::new(LocalAddress::new(tx));
 
         let context = Context {
             inner: Arc::new(Inner {
                 self_addr: Arc::downgrade(&addr),
-                stage: stage.clone(),
                 recipient: rx,
             }),
         };
@@ -41,10 +39,10 @@ where
             .await
             .into_iter()
             .map(|actor| {
-                stage.run(ActorRunner {
+                tokio::spawn(ActorRunner {
                     actor,
                     context: context.clone(),
-                })
+                }.run())
             })
             .collect::<FuturesUnordered<JoinHandle<()>>>();
 

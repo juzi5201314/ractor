@@ -1,10 +1,10 @@
 use std::time::Duration;
 
-use futures::future::{join_all, FutureExt};
+use futures::future::join_all;
+use futures::FutureExt;
 use tokio::time::timeout;
 
-use ractor::{Actor, Address, Context, Message, MessageHandler, Stage};
-use tokio::runtime::Handle;
+use ractor::{Actor, Broker, Context, Message, MessageHandler};
 
 #[derive(Debug, Message)]
 struct Sleep(u64);
@@ -42,16 +42,15 @@ impl MessageHandler<Sleep> for MyActor {
 // Since they are parallel, they should be completed in about 2 seconds
 #[tokio::main]
 async fn main() {
-    let stage = Stage::from_handle(Handle::current());
-
-    let my_actor = stage.spawn::<MyActor>(100).await;
+    let my_actor = Broker::<MyActor>::spawn(100).await;
 
     // Taking into account other costs, it should be completed within 2.2 seconds
     let res = timeout(Duration::from_secs_f64(2.2), async {
         // send 200 sleep message.
-        let resp_handles =
-            join_all((0..200).map(|_| my_actor.send(Sleep(1)).map(|res| res.expect("send failed"))))
-                .await;
+        let resp_handles = join_all(
+            (0..200).map(|_| my_actor.send(Sleep(1)).map(|res| res.expect("send failed"))),
+        )
+        .await;
 
         join_all(resp_handles.into_iter().map(|handle| handle.recv())).await;
     })

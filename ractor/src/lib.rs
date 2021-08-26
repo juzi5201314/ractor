@@ -5,7 +5,6 @@ pub use context::{Context, MessageRegister};
 pub use message::{MessageHandler, ResponseHandle};
 #[cfg(feature = "derive")]
 pub use ractor_derive::*;
-pub use stage::Stage;
 
 mod actor;
 mod address;
@@ -14,7 +13,6 @@ mod context;
 mod envelope;
 pub mod error;
 pub mod message;
-mod stage;
 mod actor_runner;
 
 #[cfg(test)]

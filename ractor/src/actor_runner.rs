@@ -35,6 +35,7 @@ where
 
             this.actor.stopped(&this.context).await;
         }
+
         let mut restart_count = 0;
         loop {
             match AssertUnwindSafe(_run(&mut self)).catch_unwind().await {
@@ -49,25 +50,5 @@ where
                 }
             }
         }
-
-        /*self.actor.started(&self.context).await;
-
-        while let Ok(envelope) = self.context.recipient.recv().await {
-            match envelope {
-                Envelope::Task(handle) => {
-                    match AssertUnwindSafe((handle)(&mut self.actor, &self.context))
-                        .catch_unwind()
-                        .await
-                    {
-                        Ok(_) => {}
-                        Err(err) => {
-                            self.actor.catch_unwind(err);
-                        }
-                    }
-                }
-                Envelope::Stop => break,
-            }
-        }
-        self.actor.stopped(&self.context).await;*/
     }
 }

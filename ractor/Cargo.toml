@@ -19,6 +19,7 @@ thiserror = "1.0"
 serde = { version = "1.0.127", features = ["derive"] }
 url = "2.2.2"
 tokio-tungstenite = { version = "0.15.0", optional = true }
+log = "0.4.14"
 
 [dev-dependencies]
 tokio = { version = "1.9", features = ["full"] }

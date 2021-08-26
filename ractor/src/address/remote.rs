@@ -1,15 +1,15 @@
 use std::net::SocketAddr;
 
 use thiserror::Error;
+use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 use url::Url;
 
 use ractor_rpc::{RemoteType, RpcClient, RpcServer};
 
-use crate::{Actor, MessageHandler, ResponseHandle};
 use crate::address::LocalAddress;
 use crate::message::Message;
-use tokio::task::JoinHandle;
+use crate::{Actor, MessageHandler, ResponseHandle};
 
 #[derive(Debug, Error)]
 pub enum RemoteAddressError {
@@ -56,7 +56,7 @@ impl RemoteAddress {
 /// drop后会停止监听rpc服务器
 pub struct RemoteAddressServer {
     local_addr: SocketAddr,
-    handle: JoinHandle<()>
+    handle: JoinHandle<()>,
 }
 
 impl RemoteAddressServer {
@@ -74,7 +74,7 @@ impl RemoteAddressServer {
 
         Ok(RemoteAddressServer {
             local_addr: addr,
-            handle: tokio::spawn(server.run())
+            handle: tokio::spawn(server.run()),
         })
     }
 
@@ -82,7 +82,6 @@ impl RemoteAddressServer {
         self.local_addr
     }
 }
-
 
 impl Drop for RemoteAddressServer {
     fn drop(&mut self) {

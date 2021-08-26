@@ -11,6 +11,7 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 
 use crate::{deserialize, serialize};
+use crate::error::Error;
 
 type MessageRegister = HashMap<
     u64,
@@ -54,8 +55,8 @@ impl Server {
             {
                 Ok(s) => s,
                 Err(err) => {
-                    dbg!("failed upgrade to websocket request");
-                    dbg!(err);
+                    log::warn!("receive a tcp connection but cannot upgrade to a websocket connection.");
+                    log::debug!(err);
                     continue;
                 }
             };
@@ -74,26 +75,43 @@ impl Server {
                     let msg: crate::Message = match deserialize(&msg) {
                         Ok(msg) => msg,
                         Err(err) => {
-                            dbg!(err);
-                            dbg!("Unexpected message header. deserialize failed");
+                            log::warn!("the client received a message that could not be deserialized. Discarded");
+                            log::debug!(err);
                             continue;
                         }
                     };
                     match register.get(&msg.identity_id) {
-                        None => continue,
-                        Some(f) => outgoing
+                        None => {
+                            log::warn!("received a message that is not in the message registry. id: {}", &msg.identity_id);
+                            continue
+                        },
+                        Some(f) => match outgoing
                             .send(Message::Binary(
                                 serialize(&crate::Message {
                                     identity_id: 0,
                                     unique_id: msg.unique_id,
-                                    payload: f(&msg.payload).await.unwrap(),
+                                    payload: match f(&msg.payload).await {
+                                        Ok(t) => t,
+                                        Err(err) => {
+                                            log::warn!("failed to forward the message to the local.");
+                                            log::debug!(err);
+                                            continue
+                                        }
+                                    },
                                 })
-                                .unwrap(),
+                                .expect("Unable to deserialize message"),
                             ))
                             .await
                             .map_err(Into::<crate::WsError>::into)
-                            .map_err(Into::<crate::Error>::into)
-                            .unwrap(),
+                            .map_err(Into::<crate::Error>::into) {
+                            Ok(_) => {}
+                            Err(err) => {
+                                log::warn!("unable to respond to the message.");
+                                log::debug!(err);
+                                break
+                            }
+                        }
+                        ,
                     };
                 }
                 _ => {}

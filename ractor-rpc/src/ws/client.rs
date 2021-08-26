@@ -19,6 +19,9 @@ pub struct Client {
     sink: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, WMessage>,
     recv_handle: JoinHandle<()>,
 
+    // todo: timeout delete
+    // todo: optimize mutex
+    // 等待响应的消息表
     msg_table:
         Arc<Mutex<HashMap<u128, Box<dyn FnOnce(&[u8]) -> Result<(), crate::Error> + Send + Sync>>>>,
 }
@@ -54,15 +57,16 @@ impl Client {
                 WMessage::Binary(msg) => {
                     let msg: Message = match deserialize(&msg) {
                         Ok(msg) => msg,
-                        Err(_) => {
-                            dbg!("Unexpected message header. deserialize failed");
+                        Err(err) => {
+                            log::warn!("the client received a message that could not be deserialized. Discarded");
+                            log::debug!(err);
                             continue;
                         }
                     };
 
                     match msg_table.lock().await.remove(&msg.unique_id) {
                         None => {
-                            dbg!("Unexpected message header. unique id not found");
+                            log::warn!("a message that does not exist in the message table was received. It may be that the response has expired or is a forged message.");
                             continue;
                         }
                         Some(resp) => {

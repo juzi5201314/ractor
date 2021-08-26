@@ -3,6 +3,9 @@ use uuid::Uuid;
 
 use crate::{serialize, RemoteType};
 
+/// 到目前为止, remote只能发送有效消息而不能发送错误信息
+/// todo: actor发生错误时允许远程发送错误信息
+
 #[derive(Serialize, Deserialize)]
 pub struct Message {
     pub identity_id: u64,

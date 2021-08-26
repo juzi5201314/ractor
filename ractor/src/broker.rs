@@ -24,7 +24,11 @@ impl<A> Broker<A>
 where
     A: Actor,
 {
-    pub async fn spawn(quantity: usize) -> Broker<A> {
+    pub async fn spawn_one() -> Self {
+        Broker::spawn(1).await
+    }
+
+    pub async fn spawn(quantity: usize) -> Self {
         let (tx, rx) = bounded_future_both(A::MAIL_BOX_SIZE as usize);
         let addr = Arc::new(LocalAddress::new(tx));
 

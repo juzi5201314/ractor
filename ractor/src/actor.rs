@@ -19,7 +19,7 @@ pub trait Actor: Send + 'static {
     async fn stopped(&mut self, _ctx: &Context<Self>) {}
 
     #[cfg(feature = "remote")]
-    fn register(_register: &mut crate::MessageRegister, _local_address: LocalAddress<Self>) {}
+    fn register(_register: &mut crate::MessageRegister, _local_address: crate::LocalAddress<Self>) {}
 
     /// 用于发生意外的时候处理actor
     /// 不建议也不应该用于错误处理

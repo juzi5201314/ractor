@@ -1,6 +1,6 @@
-use ractor::{Actor, Context, Message, MessageHandler, Broker};
+use ractor::{Actor, Context, MessageHandler, Broker};
 
-#[derive(Debug, Message)]
+#[derive(Debug)]
 struct Sum;
 
 #[derive(Default)]

@@ -1,9 +1,9 @@
 use std::any::Any;
 
-use ractor::{Actor, Broker, Context, Message, MessageHandler, StoppingPosition};
+use ractor::{Actor, Broker, Context, MessageHandler, StoppingPosition};
 use std::fmt::Debug;
 
-#[derive(Debug, Message)]
+#[derive(Debug)]
 struct Hello;
 
 #[derive(Default)]

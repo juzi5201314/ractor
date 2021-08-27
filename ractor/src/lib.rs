@@ -7,10 +7,10 @@ pub use broker::Broker;
 #[cfg(feature = "remote")]
 pub use context::MessageRegister;
 pub use context::{Context, GlobalContext, State};
-pub use message::{MessageHandler, ResponseHandle};
-#[cfg(feature = "derive")]
+pub use message::{Message, MessageHandler, ResponseHandle};
+/*#[cfg(feature = "derive")]
 pub use ractor_derive::*;
-
+*/
 mod actor;
 mod actor_runner;
 mod address;
@@ -18,7 +18,7 @@ mod broker;
 mod context;
 mod envelope;
 pub mod error;
-pub mod message;
+mod message;
 
 #[cfg(test)]
 mod tests {}

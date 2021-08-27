@@ -1,6 +1,6 @@
-use ractor::{Actor, Broker, Context, Message, MessageHandler};
+use ractor::{Actor, Broker, Context, MessageHandler};
 
-#[derive(Debug, Message)]
+#[derive(Debug)]
 struct Reset;
 
 #[derive(Default)]

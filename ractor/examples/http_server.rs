@@ -5,7 +5,7 @@ use hyper::service::service_fn;
 use hyper::{Body, Request, Response};
 use tokio::net::{TcpListener, TcpStream};
 
-use ractor::{Actor, Context, Message, MessageHandler, Broker};
+use ractor::{Actor, Context, MessageHandler, Broker};
 
 #[global_allocator]
 static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;
@@ -45,7 +45,7 @@ impl Actor for MyActor {
     }
 }
 
-#[derive(Debug, Message)]
+#[derive(Debug)]
 struct Req(TcpStream);
 
 #[async_trait::async_trait]

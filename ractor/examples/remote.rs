@@ -1,9 +1,9 @@
-use ractor::{Actor, Context, Message, MessageHandler, RemoteAddress, Broker};
+use ractor::{Actor, Context, MessageHandler, RemoteAddress, Broker};
 use ractor::{LocalAddress, MessageRegister};
 use ractor_rpc::RemoteType;
 use url::Url;
 
-#[derive(Debug, Message, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct Sum(isize, isize);
 
 impl RemoteType for Sum {

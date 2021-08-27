@@ -4,9 +4,9 @@ use futures::future::join_all;
 use futures::FutureExt;
 use tokio::time::timeout;
 
-use ractor::{Actor, Broker, Context, Message, MessageHandler};
+use ractor::{Actor, Broker, Context, MessageHandler};
 
-#[derive(Debug, Message)]
+#[derive(Debug)]
 struct Sleep(u64);
 
 #[derive(Default)]

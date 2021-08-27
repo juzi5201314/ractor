@@ -8,6 +8,8 @@ use crate::Context;
 
 pub trait Message: Send {}
 
+impl<T> Message for T where T: Send {}
+
 #[async_trait]
 pub trait MessageHandler<M>: Sized + Send
 where

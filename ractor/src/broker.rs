@@ -13,6 +13,7 @@ use crate::actor::Actor;
 use crate::actor_runner::ActorRunner;
 use crate::context::{GlobalContext, Inner};
 use crate::{Context, LocalAddress};
+use std::marker::PhantomData;
 
 pub struct Broker<A> {
     addr: Arc<LocalAddress<A>>,
@@ -53,6 +54,12 @@ where
             addr,
             actor_runner_handles: join_handles,
         }
+    }
+
+    /// 将`GlobalContext::spawn`产生的Actor绑定到Broker
+    #[inline]
+    pub fn bind(&self, handle: SpawnHandle<A>) {
+        self.actor_runner_handles.push(handle.join_handle)
     }
 }
 
@@ -103,6 +110,21 @@ impl<'a> Future for WaitForActors<'a> {
                 }
             },
             Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+pub struct SpawnHandle<A> {
+    join_handle: JoinHandle<()>,
+    marker: PhantomData<A>
+}
+
+impl<A> From<JoinHandle<()>> for SpawnHandle<A> where A: Actor {
+    #[inline]
+    fn from(h: JoinHandle<()>) -> Self {
+        SpawnHandle {
+            join_handle: h,
+            marker: PhantomData::default()
         }
     }
 }

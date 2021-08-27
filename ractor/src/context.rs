@@ -8,22 +8,30 @@ use futures::{Future, FutureExt};
 #[cfg(feature = "remote")]
 use ractor_rpc::{deserialize, serialize, RemoteType};
 
+use crate::actor_runner::ActorRunner;
+use crate::broker::SpawnHandle;
 use crate::envelope::MailBoxRx;
 use crate::{Actor, LocalAddress};
 
 /// 单个actor的上下文
 pub struct Context<A: ?Sized> {
-    pub(crate) global_context: GlobalContext<A>
+    pub(crate) global_context: GlobalContext<A>,
 }
 
-impl<A> Context<A> where A: Actor {
+impl<A> Context<A>
+where
+    A: Actor,
+{
     #[inline]
     pub fn global(&self) -> &GlobalContext<A> {
         &self.global_context
     }
 }
 
-impl<A> Deref for Context<A> where A: Actor {
+impl<A> Deref for Context<A>
+where
+    A: Actor,
+{
     type Target = GlobalContext<A>;
 
     #[inline]
@@ -62,6 +70,16 @@ where
     pub fn alive_count(&self) -> usize {
         Arc::strong_count(&self.inner)
     }
+
+    /// 在上下文中产生一个新的Actor
+    /// 可以`Broker::bind`将`JoinHandle`绑定到一个Broker上, 以便统一管理.
+    pub async fn spawn(&self) -> SpawnHandle<A> {
+        let context = Context {
+            global_context: self.clone(),
+        };
+        let actor = A::create(&context).await;
+        tokio::spawn(ActorRunner { actor, context }.run()).into()
+    }
 }
 
 impl<A> Debug for GlobalContext<A>
@@ -91,6 +109,7 @@ where
 impl<A> Deref for GlobalContext<A> {
     type Target = Inner<A>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.inner
     }

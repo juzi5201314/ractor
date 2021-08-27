@@ -4,18 +4,15 @@ use hyper::server::conn::Http;
 use hyper::service::service_fn;
 use hyper::{Body, Request, Response};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::runtime::Handle;
 
-use ractor::{Actor, Context, Message, MessageHandler, Stage};
+use ractor::{Actor, Context, Message, MessageHandler, Broker};
 
 #[global_allocator]
 static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;
 
 #[tokio::main]
 async fn main() {
-    let stage = Stage::from_handle(Handle::current());
-
-    let my_actor = stage.spawn::<MyActor>(10000).await;
+    let my_actor = Broker::<MyActor>::spawn(10000).await;
 
     tokio::spawn(async move {
         let addr = "127.0.0.1:7070";
@@ -40,7 +37,7 @@ struct MyActor;
 impl Actor for MyActor {
     const MAIL_BOX_SIZE: u32 = 10;
 
-    async fn create(_ctx: &Context<Self>) -> Self
+    async fn create(_ctx: &mut Context<Self>) -> Self
     where
         Self: Sized,
     {
@@ -56,7 +53,7 @@ impl MessageHandler<Req> for MyActor {
     type Output = ();
 
     #[inline]
-    async fn handle(&mut self, Req(stream): Req, _ctx: &Context<Self>) -> Self::Output {
+    async fn handle(&mut self, Req(stream): Req, _ctx: &mut Context<Self>) -> Self::Output {
         if let Err(http_err) = Http::new()
             .serve_connection(stream, service_fn(hello))
             .await

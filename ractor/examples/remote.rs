@@ -21,7 +21,7 @@ struct MyActor;
 impl Actor for MyActor {
     const MAIL_BOX_SIZE: u32 = 10;
 
-    async fn create(_ctx: &Context<Self>) -> Self
+    async fn create(_ctx: &mut Context<Self>) -> Self
     where
         Self: Sized,
     {
@@ -36,14 +36,13 @@ impl Actor for MyActor {
 #[async_trait::async_trait]
 impl MessageHandler<Sum> for MyActor {
     type Output = isize;
-    type Error = ();
 
     async fn handle(
         &mut self,
         Sum(a, b): Sum,
-        _ctx: &Context<Self>,
-    ) -> Result<Self::Output, Self::Error> {
-        Ok(a + b)
+        _ctx: &mut Context<Self>,
+    ) -> Self::Output {
+        a + b
     }
 }
 

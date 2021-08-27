@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Formatter, Display};
 
 use async_trait::async_trait;
 
@@ -26,7 +26,7 @@ where
     ///
     /// 也就是说`Self::Error`适用于你发送了消息但不需要接收响应的时候处理错误,
     /// 而`Output = Result<..., Error1>`适用于在等待接收响应之后处理错误.
-    async fn handle(&mut self, msg: M, ctx: &Context<Self>) -> Self::Output;
+    async fn handle(&mut self, msg: M, ctx: &mut Context<Self>) -> Self::Output;
 }
 
 pub struct ResponseHandle<O>(pub(crate) RespRx<O>);
@@ -50,3 +50,11 @@ impl Debug for HandlerPanic {
         write!(f, "HandlerPanic")
     }
 }
+
+impl Display for HandlerPanic {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+
+impl std::error::Error for HandlerPanic {}

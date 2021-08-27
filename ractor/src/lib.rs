@@ -1,11 +1,12 @@
 pub use actor::Actor;
+pub use actor_runner::StoppingPosition;
 #[cfg(feature = "remote")]
 pub use address::RemoteAddress;
 pub use address::{Address, LocalAddress};
 pub use broker::Broker;
-pub use context::{GlobalContext, Context};
 #[cfg(feature = "remote")]
 pub use context::MessageRegister;
+pub use context::{Context, GlobalContext, State};
 pub use message::{MessageHandler, ResponseHandle};
 #[cfg(feature = "derive")]
 pub use ractor_derive::*;

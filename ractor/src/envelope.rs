@@ -6,7 +6,7 @@ use crate::message::{Message, MessageHandler};
 use crate::{Actor, Context};
 
 pub type Envelope<A> =
-    Box<dyn for<'a> FnOnce(&'a mut A, &'a Context<A>) -> BoxFuture<'a, ()> + Send>;
+    Box<dyn for<'a> FnOnce(&'a mut A, &'a mut Context<A>) -> BoxFuture<'a, ()> + Send>;
 
 pub(crate) fn pack<A, M>(msg: M) -> (Envelope<A>, RespRx<<A as MessageHandler<M>>::Output>)
 where
@@ -15,7 +15,7 @@ where
 {
     let (tx, rx) = oneshot::channel();
     (
-        Box::new(move |actor: &mut A, ctx: &Context<A>| {
+        Box::new(move |actor: &mut A, ctx: &mut Context<A>| {
             Box::pin(async move {
                 let resp = <A as MessageHandler<M>>::handle(actor, msg, ctx).await;
                 tx.send(resp)

@@ -29,7 +29,7 @@ impl MessageHandler<Sum> for MyActor {
 
 #[tokio::main]
 async fn main() {
-    let _my_actor = Broker::<MyActor>::spawn(1_000_000).await;
+    let _my_actor = Broker::<MyActor>::spawn(1_000_000, true).await;
 
     // 查看任务管理器, 估算占用内存大小
     println!("done");

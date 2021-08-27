@@ -1,5 +1,5 @@
 use crossfire::mpmc::TrySendError;
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Formatter, Display};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -21,6 +21,14 @@ impl<T> Debug for ChannelSendError<T> {
         )
     }
 }
+
+impl<A> Display for ChannelSendError<A> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+
+impl<A> std::error::Error for ChannelSendError<A> {}
 
 impl<T> ChannelSendError<T> {
     pub fn recover(self) -> T {

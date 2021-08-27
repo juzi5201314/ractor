@@ -2,7 +2,7 @@ cargo-features = ["edition2021"]
 
 [package]
 name = "ractor"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -28,9 +28,9 @@ hyper = { version = "0.14.11", features = ["full"] }
 snmalloc-rs = { version = "0.2.27", features = ["native-cpu", "cache-friendly"] }
 
 [features]
-default = ["derive", "remote"]
+default = ["derive"]
 derive = ["ractor-derive"]
 remote = ["ractor-rpc", "tokio-tungstenite"]
 
 [[bench]]
-name = "fib"
+name = "spawn"

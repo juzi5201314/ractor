@@ -16,7 +16,7 @@ struct MyActor;
 impl Actor for MyActor {
     const MAIL_BOX_SIZE: u32 = 2;
 
-    async fn create(_ctx: &Context<Self>) -> Self
+    async fn create(_ctx: &mut Context<Self>) -> Self
     where
         Self: Sized,
     {
@@ -31,7 +31,7 @@ impl MessageHandler<Sleep> for MyActor {
     async fn handle(
         &mut self,
         msg: Sleep,
-        _ctx: &Context<Self>,
+        _ctx: &mut Context<Self>,
     ) -> Self::Output {
         tokio::time::sleep(Duration::from_secs(msg.0)).await
     }
@@ -41,7 +41,7 @@ impl MessageHandler<Sleep> for MyActor {
 // Since they are parallel, they should be completed in about 2 seconds
 #[tokio::main]
 async fn main() {
-    let my_actor = Broker::<MyActor>::spawn(100).await;
+    let my_actor = Broker::<MyActor>::spawn(100, true).await;
 
     // Taking into account other costs, it should be completed within 2.2 seconds
     let res = timeout(Duration::from_secs_f64(2.2), async {

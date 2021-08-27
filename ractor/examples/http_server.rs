@@ -12,7 +12,7 @@ static ALLOC: snmalloc_rs::SnMalloc = snmalloc_rs::SnMalloc;
 
 #[tokio::main]
 async fn main() {
-    let my_actor = Broker::<MyActor>::spawn(10000).await;
+    let my_actor = Broker::<MyActor>::spawn(10000, true).await;
 
     tokio::spawn(async move {
         let addr = "127.0.0.1:7070";

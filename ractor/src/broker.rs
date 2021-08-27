@@ -1,4 +1,5 @@
 use std::future::Future;
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -11,9 +12,8 @@ use tokio::task::JoinHandle;
 
 use crate::actor::Actor;
 use crate::actor_runner::ActorRunner;
-use crate::context::{GlobalContext, Inner};
+use crate::context::{GlobalContext, Inner, State};
 use crate::{Context, LocalAddress};
-use std::marker::PhantomData;
 
 pub struct Broker<A> {
     addr: Arc<LocalAddress<A>>,
@@ -26,10 +26,12 @@ where
 {
     #[inline]
     pub async fn spawn_one() -> Self {
-        Broker::spawn(1).await
+        Broker::spawn(1, false).await
     }
 
-    pub async fn spawn(quantity: usize) -> Self {
+    /// `并发生成`在[`Actor::create`]有异步阻塞操作的时候效率会更高
+    /// 但在普通情况下关闭`并发生成`效率更好
+    pub async fn spawn(quantity: usize, concurrent_spawn: bool) -> Self {
         let (tx, rx) = bounded_future_both(A::MAIL_BOX_SIZE as usize);
         let addr = Arc::new(LocalAddress::new(tx));
 
@@ -40,15 +42,34 @@ where
             }),
         };
 
-        let join_handles = FuturesUnordered::new();
-
-        for _ in 0..quantity {
-            let context = Context {
-                global_context: global_context.clone(),
-            };
-            let actor = A::create(&context).await;
-            join_handles.push(tokio::spawn(ActorRunner { actor, context }.run()))
-        }
+        let join_handles = if concurrent_spawn {
+            futures::future::join_all(
+                (0..quantity)
+                    .map(|_| Context {
+                        global_context: global_context.clone(),
+                        state: State::Continue,
+                    })
+                    .map(|mut ctx| async move {
+                        let actor = A::create(&mut ctx).await;
+                        (actor, ctx)
+                    }),
+            )
+            .await
+            .into_iter()
+            .map(|(actor, context)| tokio::spawn(ActorRunner { actor, context }.run()))
+            .collect::<FuturesUnordered<JoinHandle<()>>>()
+        } else {
+            let join_handles = FuturesUnordered::new();
+            for _ in 0..quantity {
+                let mut context = Context {
+                    global_context: global_context.clone(),
+                    state: State::Continue,
+                };
+                let actor = A::create(&mut context).await;
+                join_handles.push(tokio::spawn(ActorRunner { actor, context }.run()))
+            }
+            join_handles
+        };
 
         Broker {
             addr,
@@ -118,15 +139,18 @@ impl<'a> Future for WaitForActors<'a> {
 /// 为了保证`<A>`是相同的
 pub struct SpawnHandle<A> {
     join_handle: JoinHandle<()>,
-    marker: PhantomData<A>
+    marker: PhantomData<A>,
 }
 
-impl<A> From<JoinHandle<()>> for SpawnHandle<A> where A: Actor {
+impl<A> From<JoinHandle<()>> for SpawnHandle<A>
+where
+    A: Actor,
+{
     #[inline]
     fn from(h: JoinHandle<()>) -> Self {
         SpawnHandle {
             join_handle: h,
-            marker: PhantomData::default()
+            marker: PhantomData::default(),
         }
     }
 }

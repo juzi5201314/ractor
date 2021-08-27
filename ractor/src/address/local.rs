@@ -1,8 +1,12 @@
+use std::fmt::{Debug, Formatter};
+
+use thiserror::Error;
+
 #[cfg(feature = "remote")]
 use crate::address::remote::RemoteAddressServer;
 use crate::envelope::{self, Envelope, MailBoxTx};
 use crate::error::{ChannelSendError, ChannelTrySendError};
-use crate::message::Message;
+use crate::message::{HandlerPanic, Message};
 use crate::{Actor, MessageHandler, ResponseHandle};
 
 pub struct LocalAddress<A: ?Sized> {
@@ -67,6 +71,16 @@ where
             .map_err::<ChannelTrySendError<Envelope<A>>, _>(Into::into)?;
         Ok(ResponseHandle(rx))
     }
+
+    /// send + recv
+    #[inline]
+    pub async fn call<M>(&self, msg: M) -> Result<<A as MessageHandler<M>>::Output, CallError<A>>
+    where
+        M: Message + 'static,
+        A: MessageHandler<M>,
+    {
+        Ok(self.send(msg).await?.recv().await?)
+    }
 }
 
 impl<A> Clone for LocalAddress<A> {
@@ -74,5 +88,22 @@ impl<A> Clone for LocalAddress<A> {
         LocalAddress {
             sender: self.sender.clone(),
         }
+    }
+}
+
+#[derive(Error)]
+pub enum CallError<A>
+where
+    A: 'static,
+{
+    #[error("send error: {0}")]
+    SendError(#[from] ChannelSendError<Envelope<A>>),
+    #[error("recv error: {0}")]
+    RecvError(#[from] HandlerPanic),
+}
+
+impl<A> Debug for CallError<A> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CallError")
     }
 }

@@ -48,7 +48,7 @@ impl MessageHandler<Sum> for MyActor {
 
 #[tokio::main]
 async fn main() {
-    let my_actor = Broker::<MyActor>::spawn(100).await;
+    let my_actor = Broker::<MyActor>::spawn(100, true).await;
     let local_addr = my_actor.addr();
     let server_guard = local_addr.clone().upgrade().await.unwrap();
 

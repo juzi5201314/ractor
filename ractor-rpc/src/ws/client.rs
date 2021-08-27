@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crossfire::mpsc::{RxFuture, SharedSenderBRecvF};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
+use tokio::sync::oneshot::Receiver;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
@@ -87,10 +87,7 @@ impl Client {
         Ok(())
     }
 
-    pub async fn send<O>(
-        &mut self,
-        msg: Message,
-    ) -> Result<RxFuture<O, SharedSenderBRecvF>, crate::Error>
+    pub async fn send<O>(&mut self, msg: Message) -> Result<Receiver<O>, crate::Error>
     where
         O: RemoteType + 'static,
     {
@@ -100,12 +97,12 @@ impl Client {
             .await
             .map_err(Into::<WsError>::into)?;
 
-        let (tx, rx) = crossfire::mpsc::bounded_tx_blocking_rx_future(1);
+        let (tx, rx) = tokio::sync::oneshot::channel();
 
         self.msg_table.lock().await.insert(
             msg.unique_id,
             Box::new(move |bytes: &[u8]| {
-                tx.try_send(deserialize::<O>(bytes)?)
+                tx.send(deserialize::<O>(bytes)?)
                     .map_err(|_| (/* Response is discarded */))
                     .ok();
                 Ok(())

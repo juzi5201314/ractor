@@ -1,7 +1,6 @@
 use crossfire::mpmc::{RxFuture, SharedFutureBoth, TxFuture};
-use crossfire::mpsc;
-use crossfire::mpsc::SharedSenderBRecvF;
 use futures::future::BoxFuture;
+use tokio::sync::oneshot;
 
 use crate::message::{Message, MessageHandler};
 use crate::{Actor, Context};
@@ -14,7 +13,7 @@ where
     M: Message + 'static,
     A: Actor + MessageHandler<M>,
 {
-    let (tx, rx) = mpsc::bounded_tx_blocking_rx_future(1);
+    let (tx, rx) = oneshot::channel();
     (
         Box::new(move |actor: &mut A, ctx: &Context<A>| {
             Box::pin(async move {
@@ -24,7 +23,7 @@ where
                         <A as MessageHandler<M>>::handle_error(actor, err, ctx).await;
                     }
                     Ok(resp) => {
-                        tx.try_send(resp)
+                        tx.send(resp)
                             .map_err(|_| (/* Response is discarded */))
                             .ok();
                     }
@@ -37,6 +36,4 @@ where
 
 pub type MailBoxTx<A> = TxFuture<Envelope<A>, SharedFutureBoth>;
 pub type MailBoxRx<A> = RxFuture<Envelope<A>, SharedFutureBoth>;
-#[allow(unused)]
-pub type RespTx<O> = mpsc::TxBlocking<O, SharedSenderBRecvF>;
-pub type RespRx<O> = mpsc::RxFuture<O, SharedSenderBRecvF>;
+pub type RespRx<O> = oneshot::Receiver<O>;

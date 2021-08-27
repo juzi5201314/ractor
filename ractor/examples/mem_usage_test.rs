@@ -34,5 +34,6 @@ async fn main() {
 
     // 查看任务管理器, 估算占用内存大小
     // 404 byte
+    println!("done");
     std::io::stdin().read_line(&mut String::new()).unwrap();
 }

@@ -39,11 +39,11 @@ pub struct ResponseHandle<O>(pub(crate) RespRx<O>);
 impl<O> ResponseHandle<O> {
     #[inline]
     pub async fn recv(self) -> Result<O, HandlerPanic> {
-        self.0.recv().await.map_err(|_| HandlerPanic)
+        self.0.await.map_err(|_| HandlerPanic)
     }
 
     #[inline]
-    pub fn try_recv(&self) -> Result<O, HandlerPanic> {
+    pub fn try_recv(&mut self) -> Result<O, HandlerPanic> {
         self.0.try_recv().map_err(|_| HandlerPanic)
     }
 }

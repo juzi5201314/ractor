@@ -11,7 +11,6 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 
 use crate::{deserialize, serialize};
-use crate::error::Error;
 
 type MessageRegister = HashMap<
     u64,
@@ -56,7 +55,7 @@ impl Server {
                 Ok(s) => s,
                 Err(err) => {
                     log::warn!("receive a tcp connection but cannot upgrade to a websocket connection.");
-                    log::debug!(err);
+                    log::debug!("{}", err);
                     continue;
                 }
             };
@@ -76,7 +75,7 @@ impl Server {
                         Ok(msg) => msg,
                         Err(err) => {
                             log::warn!("the client received a message that could not be deserialized. Discarded");
-                            log::debug!(err);
+                            log::debug!("{}", err);
                             continue;
                         }
                     };
@@ -94,7 +93,7 @@ impl Server {
                                         Ok(t) => t,
                                         Err(err) => {
                                             log::warn!("failed to forward the message to the local.");
-                                            log::debug!(err);
+                                            log::debug!("{}", err);
                                             continue
                                         }
                                     },
@@ -107,7 +106,7 @@ impl Server {
                             Ok(_) => {}
                             Err(err) => {
                                 log::warn!("unable to respond to the message.");
-                                log::debug!(err);
+                                log::debug!("{}", err);
                                 break
                             }
                         }

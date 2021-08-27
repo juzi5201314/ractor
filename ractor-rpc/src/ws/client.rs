@@ -59,7 +59,7 @@ impl Client {
                         Ok(msg) => msg,
                         Err(err) => {
                             log::warn!("the client received a message that could not be deserialized. Discarded");
-                            log::debug!(err);
+                            log::debug!("{}", err);
                             continue;
                         }
                     };

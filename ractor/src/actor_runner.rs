@@ -4,7 +4,6 @@ use futures::FutureExt;
 
 use crate::actor::Actor;
 use crate::context::Context;
-use crate::envelope::Envelope;
 
 pub struct ActorRunner<A> {
     pub actor: A,
@@ -25,12 +24,7 @@ where
             this.actor.started(&this.context).await;
 
             while let Ok(envelope) = this.context.recipient.recv().await {
-                match envelope {
-                    Envelope::Task(handle) => {
-                        (handle)(&mut this.actor, &this.context).await;
-                    }
-                    Envelope::Stop => break,
-                }
+                (envelope)(&mut this.actor, &this.context).await;
             }
 
             this.actor.stopped(&this.context).await;

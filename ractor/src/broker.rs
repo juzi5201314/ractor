@@ -114,6 +114,8 @@ impl<'a> Future for WaitForActors<'a> {
     }
 }
 
+/// 实际上等同于`JoinHandle<()>`
+/// 为了保证`<A>`是相同的
 pub struct SpawnHandle<A> {
     join_handle: JoinHandle<()>,
     marker: PhantomData<A>

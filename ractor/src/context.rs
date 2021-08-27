@@ -18,8 +18,15 @@ use crate::{Actor, LocalAddress};
 
 /// 指示Actor之后的状态
 ///
+///
+/// 状态跟Actor的生命周期息息相关
+///
+/// 在周期中指定当前周期结束与下个周期开始之前的状态
+///
+///
 /// 在不合适的地方设置不适合的状态会被忽略,
-/// 被忽略的状态会还原成默认值, 即`Status::Continue`.
+///
+/// 被忽略的状态会还原成默认值, 即[`Status::Continue`].
 ///
 #[derive(Clone)]
 pub enum State {
@@ -27,23 +34,30 @@ pub enum State {
     Continue,
     /// 停止Actor
     ///
-    /// 在生命周期中的`Stop`状态才会触发`Actor::stopped`. 因为还没有开始, 自然就没有停止.
-    /// 所以如果在`Actor::create`中设置状态为`Status::Stop`, 那么Actor什么都不会做就停止了.
+    ///
+    /// 在生命周期中的[`Stop`]状态才会触发[`Actor::stopped`]. 因为还没有开始, 自然就没有停止.
+    ///
+    /// 所以如果在[`Actor::create`]中设置状态为[`Status::Stop`], 那么Actor什么都不会做就停止了.
     Stop,
     /// 收到`Notify`的通知后恢复
     Pause(Arc<Notify>),
-    /// 调用`tokio::task::yield_now`
+    /// 调用[`tokio::task::yield_now`]
     Yield,
     /// 重置Actor状态并重启, 重新开始Actor生命周期
-    /// 仅在生命周期内有效.
-    /// 例如, 你无法在start之前就reset, 这样会无视掉`Status::Reset`并在`Actor::started`之后执行reset操作.
     ///
-    /// 会调用`Actor::reset`来重置状态
+    /// 仅在生命周期内有效.
+    ///
+    /// 例如, 你无法在start之前就reset, 这样会无视掉[`Status::Reset`]并在[`Actor::started`]之后执行reset操作.
+    ///
+    ///
+    /// 会调用[`Actor::reset`]来重置状态
     Reset,
     /// 表示终止
     ///
-    /// 该状态只会出现在`Actor::catch_unwind`中
-    /// 手动设置此状态无效, 等同于`Status::Continue`.
+    ///
+    /// 该状态只会出现在[`Actor::catch_unwind`]中
+    ///
+    /// 手动设置此状态无效, 等同于[`Status::Continue`].
     Abort,
     /// 休眠指定时间
     Sleep(Arc<Duration>),
@@ -56,6 +70,7 @@ impl State {
     }
 
     /// 执行有"副作用"的状态, 即只存在一次的状态
+    ///
     /// 执行完毕后会复原到默认状态
     #[inline]
     pub(crate) async fn reach(&mut self) {
@@ -160,7 +175,8 @@ where
     }
 
     /// 在上下文中产生一个新的Actor
-    /// 可以`Broker::bind`将`JoinHandle`绑定到一个Broker上, 以便统一管理.
+    ///
+    /// 可以[`Broker::bind`]将[`SpawnHandle`]绑定到一个Broker上, 以便统一管理.
     pub async fn spawn(&self) -> SpawnHandle<A> {
         let mut context = Context {
             global_context: self.clone(),

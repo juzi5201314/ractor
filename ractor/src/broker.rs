@@ -30,6 +30,7 @@ where
     }
 
     /// `并发生成`在[`Actor::create`]有异步阻塞操作的时候效率会更高
+    ///
     /// 但在普通情况下关闭`并发生成`效率更好
     pub async fn spawn(quantity: usize, concurrent_spawn: bool) -> Self {
         let (tx, rx) = bounded_future_both(A::MAIL_BOX_SIZE as usize);
@@ -77,7 +78,7 @@ where
         }
     }
 
-    /// 将`GlobalContext::spawn`产生的Actor绑定到Broker
+    /// 将[`GlobalContext::spawn`]产生的Actor绑定到Broker
     #[inline]
     pub fn bind(&self, handle: SpawnHandle<A>) {
         self.actor_runner_handles.push(handle.join_handle)
@@ -135,7 +136,8 @@ impl<'a> Future for WaitForActors<'a> {
     }
 }
 
-/// 实际上等同于`JoinHandle<()>`
+/// 实际上等同于[`JoinHandle<()>`]
+///
 /// 为了保证`<A>`是相同的
 pub struct SpawnHandle<A> {
     join_handle: JoinHandle<()>,

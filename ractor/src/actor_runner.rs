@@ -20,10 +20,10 @@ where
 
         // 无副作用的状态:
         //
-        // `Status::Continue`为默认状态, 不需要重置状态
-        // `Status::Stop`之后停止, 不需要重置状态
-        // `Status::Reset`会在'life_cycle之后的第一次状态中重置
-        // `Status::Abort`为只读状态
+        // [`Status::Continue`]为默认状态, 不需要重置状态
+        // [`Status::Stop`]之后停止, 不需要重置状态
+        // [`Status::Reset`]会在'life_cycle之后的第一次状态中重置
+        // [`Status::Abort`]为只读状态
 
         'main_loop: loop {
             match AssertUnwindSafe(async {

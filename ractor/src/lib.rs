@@ -1,9 +1,11 @@
+#![allow(rustdoc::broken_intra_doc_links)]
+
 pub use actor::Actor;
 pub use actor_runner::StoppingPosition;
 #[cfg(feature = "remote")]
 pub use address::RemoteAddress;
 pub use address::{Address, LocalAddress};
-pub use broker::Broker;
+pub use broker::{Broker, SpawnHandle};
 #[cfg(feature = "remote")]
 pub use context::MessageRegister;
 pub use context::{Context, GlobalContext, State};

@@ -17,17 +17,10 @@ where
     (
         Box::new(move |actor: &mut A, ctx: &Context<A>| {
             Box::pin(async move {
-                let resp_res = <A as MessageHandler<M>>::handle(actor, msg, ctx).await;
-                match resp_res {
-                    Err(err) => {
-                        <A as MessageHandler<M>>::handle_error(actor, err, ctx).await;
-                    }
-                    Ok(resp) => {
-                        tx.send(resp)
-                            .map_err(|_| (/* Response is discarded */))
-                            .ok();
-                    }
-                }
+                let resp = <A as MessageHandler<M>>::handle(actor, msg, ctx).await;
+                tx.send(resp)
+                    .map_err(|_| (/* Response is discarded */))
+                    .ok();
             })
         }),
         rx,

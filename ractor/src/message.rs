@@ -15,8 +15,6 @@ where
     M: Message,
 {
     type Output: Send + 'static;
-    type Error: Send + 'static;
-
     /// 处理消息
     ///
     /// # Error
@@ -28,10 +26,7 @@ where
     ///
     /// 也就是说`Self::Error`适用于你发送了消息但不需要接收响应的时候处理错误,
     /// 而`Output = Result<..., Error1>`适用于在等待接收响应之后处理错误.
-    async fn handle(&mut self, msg: M, ctx: &Context<Self>) -> Result<Self::Output, Self::Error>;
-
-    /// 处理错误
-    async fn handle_error(&mut self, _err: Self::Error, _ctx: &Context<Self>) {}
+    async fn handle(&mut self, msg: M, ctx: &Context<Self>) -> Self::Output;
 }
 
 pub struct ResponseHandle<O>(pub(crate) RespRx<O>);

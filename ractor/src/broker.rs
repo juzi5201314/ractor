@@ -5,15 +5,14 @@ use std::sync::Arc;
 use std::task::Poll;
 
 use crossfire::mpmc::bounded_future_both;
-use futures::future::join_all;
 use futures::stream::FuturesUnordered;
 use futures::Stream;
 use tokio::task::JoinHandle;
 
 use crate::actor::Actor;
-use crate::context::{Context, Inner};
 use crate::actor_runner::ActorRunner;
-use crate::LocalAddress;
+use crate::context::{GlobalContext, Inner};
+use crate::{Context, LocalAddress};
 
 pub struct Broker<A> {
     addr: Arc<LocalAddress<A>>,
@@ -24,6 +23,7 @@ impl<A> Broker<A>
 where
     A: Actor,
 {
+    #[inline]
     pub async fn spawn_one() -> Self {
         Broker::spawn(1).await
     }
@@ -32,23 +32,22 @@ where
         let (tx, rx) = bounded_future_both(A::MAIL_BOX_SIZE as usize);
         let addr = Arc::new(LocalAddress::new(tx));
 
-        let context = Context {
+        let global_context = GlobalContext {
             inner: Arc::new(Inner {
                 self_addr: Arc::downgrade(&addr),
                 recipient: rx,
             }),
         };
 
-        let join_handles = join_all((0..quantity).map(|_| A::create(&context)))
-            .await
-            .into_iter()
-            .map(|actor| {
-                tokio::spawn(ActorRunner {
-                    actor,
-                    context: context.clone(),
-                }.run())
-            })
-            .collect::<FuturesUnordered<JoinHandle<()>>>();
+        let join_handles = FuturesUnordered::new();
+
+        for _ in 0..quantity {
+            let context = Context {
+                global_context: global_context.clone(),
+            };
+            let actor = A::create(&context).await;
+            join_handles.push(tokio::spawn(ActorRunner { actor, context }.run()))
+        }
 
         Broker {
             addr,
@@ -101,7 +100,7 @@ impl<'a> Future for WaitForActors<'a> {
                         }
                     }
                     Poll::Pending
-                },
+                }
             },
             Poll::Pending => Poll::Pending,
         }

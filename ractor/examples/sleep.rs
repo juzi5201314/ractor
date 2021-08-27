@@ -27,14 +27,13 @@ impl Actor for MyActor {
 #[async_trait::async_trait]
 impl MessageHandler<Sleep> for MyActor {
     type Output = ();
-    type Error = ();
 
     async fn handle(
         &mut self,
         msg: Sleep,
         _ctx: &Context<Self>,
-    ) -> Result<Self::Output, Self::Error> {
-        Ok(tokio::time::sleep(Duration::from_secs(msg.0)).await)
+    ) -> Self::Output {
+        tokio::time::sleep(Duration::from_secs(msg.0)).await
     }
 }
 

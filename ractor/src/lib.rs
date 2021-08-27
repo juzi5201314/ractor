@@ -3,7 +3,7 @@ pub use actor::Actor;
 pub use address::RemoteAddress;
 pub use address::{Address, LocalAddress};
 pub use broker::Broker;
-pub use context::Context;
+pub use context::{GlobalContext, Context};
 #[cfg(feature = "remote")]
 pub use context::MessageRegister;
 pub use message::{MessageHandler, ResponseHandle};

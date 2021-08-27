@@ -11,7 +11,29 @@ use ractor_rpc::{deserialize, serialize, RemoteType};
 use crate::envelope::MailBoxRx;
 use crate::{Actor, LocalAddress};
 
+/// 单个actor的上下文
 pub struct Context<A: ?Sized> {
+    pub(crate) global_context: GlobalContext<A>
+}
+
+impl<A> Context<A> where A: Actor {
+    #[inline]
+    pub fn global(&self) -> &GlobalContext<A> {
+        &self.global_context
+    }
+}
+
+impl<A> Deref for Context<A> where A: Actor {
+    type Target = GlobalContext<A>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.global_context
+    }
+}
+
+/// 全局(同一个地址的全部actor)共享的上下文
+pub struct GlobalContext<A: ?Sized> {
     pub(crate) inner: Arc<Inner<A>>,
 }
 
@@ -33,7 +55,7 @@ where
     }
 }
 
-impl<A> Context<A>
+impl<A> GlobalContext<A>
 where
     A: Actor,
 {
@@ -42,12 +64,12 @@ where
     }
 }
 
-impl<A> Debug for Context<A>
+impl<A> Debug for GlobalContext<A>
 where
     A: Actor,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Actor Context")?;
+        writeln!(f, "Actor GlobalContext")?;
         writeln!(
             f,
             "There are {} actors alive in the context",
@@ -66,7 +88,7 @@ where
     }
 }
 
-impl<A> Deref for Context<A> {
+impl<A> Deref for GlobalContext<A> {
     type Target = Inner<A>;
 
     fn deref(&self) -> &Self::Target {
@@ -74,9 +96,9 @@ impl<A> Deref for Context<A> {
     }
 }
 
-impl<A> Clone for Context<A> {
+impl<A> Clone for GlobalContext<A> {
     fn clone(&self) -> Self {
-        Context {
+        GlobalContext {
             inner: Arc::clone(&self.inner),
         }
     }

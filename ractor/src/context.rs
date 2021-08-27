@@ -1,16 +1,15 @@
-use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::ops::Deref;
-use std::pin::Pin;
 use std::sync::{Arc, Weak};
 
+#[cfg(feature = "remote")]
 use futures::{Future, FutureExt};
 
+#[cfg(feature = "remote")]
 use ractor_rpc::{deserialize, serialize, RemoteType};
 
 use crate::envelope::MailBoxRx;
-use crate::message::Message;
-use crate::{Actor, LocalAddress, MessageHandler};
+use crate::{Actor, LocalAddress};
 
 pub struct Context<A: ?Sized> {
     pub(crate) inner: Arc<Inner<A>>,
@@ -83,26 +82,28 @@ impl<A> Clone for Context<A> {
     }
 }
 
+#[cfg(feature = "remote")]
 #[derive(Default)]
 pub struct MessageRegister(
-    pub  HashMap<
+    pub  std::collections::HashMap<
         u64,
         Box<
             dyn Fn(
                     &[u8],
-                )
-                    -> Pin<Box<dyn Future<Output = Result<Vec<u8>, ractor_rpc::Error>> + Send>>
-                + Send
+                ) -> std::pin::Pin<
+                    Box<dyn Future<Output = Result<Vec<u8>, ractor_rpc::Error>> + Send>,
+                > + Send
                 + Sync,
         >,
     >,
 );
 
+#[cfg(feature = "remote")]
 impl MessageRegister {
     pub fn register<M, A>(&mut self, addr: LocalAddress<A>)
     where
-        M: ?Sized + RemoteType + Message + 'static,
-        A: MessageHandler<M>,
+        M: ?Sized + RemoteType + crate::message::Message + 'static,
+        A: crate::MessageHandler<M>,
         A::Output: RemoteType,
     {
         self.0.insert(

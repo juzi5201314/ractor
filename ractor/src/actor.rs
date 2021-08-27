@@ -1,8 +1,6 @@
 use std::any::Any;
 
-use crate::address::LocalAddress;
 use crate::context::Context;
-use crate::MessageRegister;
 
 #[async_trait::async_trait]
 pub trait Actor: Send + 'static {
@@ -20,7 +18,8 @@ pub trait Actor: Send + 'static {
 
     async fn stopped(&mut self, _ctx: &Context<Self>) {}
 
-    fn register(_register: &mut MessageRegister, _local_address: LocalAddress<Self>) {}
+    #[cfg(feature = "remote")]
+    fn register(_register: &mut crate::MessageRegister, _local_address: LocalAddress<Self>) {}
 
     /// 用于发生意外的时候处理actor
     /// 不建议也不应该用于错误处理
@@ -35,9 +34,10 @@ pub trait Actor: Send + 'static {
         false
     }
 
+    #[cfg(feature = "remote")]
     #[inline]
-    fn msg_register(local_address: LocalAddress<Self>) -> MessageRegister {
-        let mut register = MessageRegister::default();
+    fn msg_register(local_address: crate::address::LocalAddress<Self>) -> crate::MessageRegister {
+        let mut register = crate::MessageRegister::default();
         Self::register(&mut register, local_address);
         register
     }

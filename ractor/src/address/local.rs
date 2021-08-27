@@ -1,5 +1,4 @@
-use std::net::SocketAddr;
-
+#[cfg(feature = "remote")]
 use crate::address::remote::RemoteAddressServer;
 use crate::envelope::{self, Envelope, MailBoxTx};
 use crate::error::{ChannelSendError, ChannelTrySendError};
@@ -21,15 +20,17 @@ where
 
     /// 升级到远程地址
     /// 默认监听`0.0.0.0:0`
+    #[cfg(feature = "remote")]
     #[inline]
     pub async fn upgrade(self) -> Result<RemoteAddressServer, ractor_rpc::Error> {
         RemoteAddressServer::from_local(self, "0.0.0.0:0".parse().unwrap()).await
     }
 
+    #[cfg(feature = "remote")]
     #[inline]
     pub async fn upgrade_to(
         self,
-        addr: SocketAddr,
+        addr: std::net::SocketAddr,
     ) -> Result<RemoteAddressServer, ractor_rpc::Error> {
         RemoteAddressServer::from_local(self, addr).await
     }

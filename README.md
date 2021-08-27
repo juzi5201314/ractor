@@ -25,6 +25,10 @@
 > 
 > 参考: [pony](https://www.ponylang.io/), [akka](https://akka.io/)
 
+## Benchmark
+### 生成一个actor
+![bench-spawn1.png](./assets/bench-spawn1.png)
+
 ## 基础流程
 ![png](./assets/ractor-base.png)
 

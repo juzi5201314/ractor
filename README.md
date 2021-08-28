@@ -7,7 +7,7 @@
 ## Feature
 - [x] 基于异步
 - [x] 使用tokio多线程runtime可以充分利用多线程运行actor
-- [x] 使用生命周期状态, 可以比较方便编写流程
+- [x] 与actor生命周期相关的状态模式, 可以比较方便编写流程
 - [x] actor的开销不大, 创建百万个actor只需要1.7Gb内存
 
 ## TODO

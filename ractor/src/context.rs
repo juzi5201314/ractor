@@ -6,7 +6,6 @@ use std::time::Duration;
 #[cfg(feature = "remote")]
 use futures::{Future, FutureExt};
 use tokio::sync::Notify;
-use tokio::time::sleep;
 
 #[cfg(feature = "remote")]
 use ractor_rpc::{deserialize, serialize, RemoteType};
@@ -21,13 +20,12 @@ use crate::{Actor, LocalAddress};
 ///
 /// 状态跟Actor的生命周期息息相关
 ///
-/// 在周期中指定当前周期结束与下个周期开始之前的状态
+/// 指定本周期结束的状态, 在周期结束之前执行某种行为
 ///
 ///
 /// 在不合适的地方设置不适合的状态会被忽略,
 ///
-/// 被忽略的状态会还原成默认值, 即[`Status::Continue`].
-///
+/// 每一次周期结束之后, 状态会重置为[`Status::Continue`].
 #[derive(Clone)]
 pub enum State {
     /// Actor创建之后的默认状态, 什么都不做.
@@ -69,29 +67,12 @@ impl State {
     pub(crate) fn clear(&mut self) {
         *self = State::Continue
     }
-
-    /// 执行有"副作用"的状态, 即只存在一次的状态
-    ///
-    /// 执行完毕后会复原到默认状态
-    #[inline]
-    pub(crate) async fn reach(&mut self) {
-        match self {
-            State::Pause(notify) => {
-                notify.notified().await;
-            }
-            State::Yield => {
-                tokio::task::yield_now().await;
-            }
-            State::Sleep(t) => sleep(Duration::from_millis(*t)).await,
-            State::Continue | State::Stop | State::Reset | State::Abort => {}
-        }
-        self.clear();
-    }
 }
 
 /// 单个actor的上下文
 pub struct Context<A: ?Sized> {
     pub(crate) global_context: GlobalContext<A>,
+    /// 指定本周期结束的状态
     pub state: State,
 }
 

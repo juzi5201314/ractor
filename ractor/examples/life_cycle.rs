@@ -2,9 +2,6 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::io::{stdout, Write};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Duration;
-
-use tokio::time::sleep;
 
 use ractor::{Actor, Broker, Context, MessageHandler, StoppingPosition};
 
@@ -78,6 +75,6 @@ async fn main() {
     my_actor.send(Hello).await.unwrap();
     my_actor.send(Hello).await.unwrap();
 
-    sleep(Duration::from_secs(1)).await;
+    my_actor.wait_for_actors().await;
     stdout().flush().unwrap()
 }

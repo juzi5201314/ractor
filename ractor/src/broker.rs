@@ -1,13 +1,10 @@
-use std::future::Future;
 use std::marker::PhantomData;
 use std::ops::Deref;
-use std::pin::Pin;
 use std::sync::Arc;
-use std::task::Poll;
 
 use crossfire::mpmc::bounded_future_both;
+use futures::future::join_all;
 use futures::stream::FuturesUnordered;
-use futures::Stream;
 use tokio::task::JoinHandle;
 
 use crate::actor::Actor;
@@ -44,7 +41,7 @@ where
         };
 
         let join_handles = if concurrent_spawn {
-            futures::future::join_all(
+            join_all(
                 (0..quantity)
                     .map(|_| Context {
                         global_context: global_context.clone(),
@@ -94,8 +91,9 @@ where
         &self.addr
     }
 
-    pub async fn wait_for_actors(&mut self) -> WaitForActors<'_> {
-        WaitForActors(&mut self.actor_runner_handles)
+    pub async fn wait_for_actors(self) {
+        drop(self.addr);
+        join_all(self.actor_runner_handles).await;
     }
 
     pub fn abort(&self) {
@@ -110,29 +108,6 @@ impl<A> Deref for Broker<A> {
 
     fn deref(&self) -> &Self::Target {
         &self.addr
-    }
-}
-
-pub struct WaitForActors<'a>(&'a mut FuturesUnordered<JoinHandle<()>>);
-
-impl<'a> Future for WaitForActors<'a> {
-    type Output = ();
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-        match Pin::new(&mut self.0).poll_next(cx) {
-            Poll::Ready(opt) => match opt {
-                None => Poll::Ready(()),
-                Some(res) => {
-                    if let Err(err) = res {
-                        if err.is_panic() {
-                            log::warn!("Panic appears during the running of the actor: {}", err)
-                        }
-                    }
-                    Poll::Pending
-                }
-            },
-            Poll::Pending => Poll::Pending,
-        }
     }
 }
 

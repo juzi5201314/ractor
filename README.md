@@ -29,7 +29,7 @@
 - [ ] 更多...如果你也感兴趣
 
 ## Bugs
-- [x] 过多的内存占用(fixed in #2)
+- [x] 过多的内存占用(fixed in [#2](https://github.com/juzi5201314/ractor/issues/2))
 
 ---
 > 非科班学生, 业余爱好者, 基础差, 如有实现错误欢迎指出.

@@ -1,10 +1,11 @@
+use std::future::Future;
+
+use criterion::async_executor::AsyncExecutor;
 use criterion::{black_box, Criterion};
 use criterion::{criterion_group, criterion_main};
 use tokio::runtime::{Builder, Runtime};
 
 use ractor::{Actor, Broker, Context};
-use criterion::async_executor::AsyncExecutor;
-use std::future::Future;
 
 fn multi_thread(c: &mut Criterion) {
     let rt = TokioRt(Builder::new_multi_thread().enable_all().build().unwrap());
@@ -16,13 +17,13 @@ fn multi_thread(c: &mut Criterion) {
     });
     c.bench_function("sync spawn 100", |b| {
         b.to_async(&rt).iter(|| async {
-            let my_actor = Broker::<MyActor>::spawn(10, false).await;
+            let my_actor = Broker::<MyActor>::spawn(100, false).await;
             black_box(my_actor)
         });
     });
     c.bench_function("concurrent spawn 100", |b| {
         b.to_async(&rt).iter(|| async {
-            let my_actor = Broker::<MyActor>::spawn(10, true).await;
+            let my_actor = Broker::<MyActor>::spawn(100, true).await;
             black_box(my_actor)
         });
     });
@@ -50,7 +51,7 @@ struct TokioRt(Runtime);
 
 impl AsyncExecutor for &TokioRt {
     #[inline]
-    fn block_on<T>(&self, future: impl Future<Output=T>) -> T {
+    fn block_on<T>(&self, future: impl Future<Output = T>) -> T {
         self.0.block_on(future)
     }
 }

@@ -59,8 +59,9 @@ pub enum State {
     ///
     /// 手动设置此状态无效, 等同于[`Status::Continue`].
     Abort,
-    /// 休眠指定时间
-    Sleep(Arc<Duration>),
+    /// 休眠指定时间,
+    /// .ms
+    Sleep(u64),
 }
 
 impl State {
@@ -81,7 +82,7 @@ impl State {
             State::Yield => {
                 tokio::task::yield_now().await;
             }
-            State::Sleep(dur) => sleep(**dur).await,
+            State::Sleep(t) => sleep(Duration::from_millis(*t)).await,
             State::Continue | State::Stop | State::Reset | State::Abort => {}
         }
         self.clear();
@@ -127,7 +128,7 @@ where
 
     #[inline]
     pub fn sleep(&mut self, dur: Duration) {
-        self.state = State::Sleep(Arc::new(dur));
+        self.state = State::Sleep(dur.as_millis() as u64);
     }
 }
 

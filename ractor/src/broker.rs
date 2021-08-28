@@ -11,7 +11,10 @@ use crate::actor_runner::ActorRunner;
 use crate::context::{GlobalContext, Inner, State};
 use crate::{Context, LocalAddress};
 
-pub struct Broker<A> {
+pub struct Broker<A>
+where
+    A: Actor,
+{
     addr: Arc<LocalAddress<A>>,
     actor_runner_handles: Vec<JoinHandle<()>>,
 }
@@ -21,14 +24,25 @@ where
     A: Actor,
 {
     #[inline]
-    pub async fn spawn_one() -> Self {
+    pub async fn spawn_one() -> Self
+    where
+        A::Args: Default,
+    {
         Broker::spawn(1, false).await
+    }
+
+    #[inline]
+    pub async fn spawn(quantity: usize, concurrent_spawn: bool) -> Self
+    where
+        A::Args: Default,
+    {
+        Broker::spawn_with_args(quantity, concurrent_spawn, Default::default()).await
     }
 
     /// `并发生成`在[`Actor::create`]有异步阻塞操作的时候效率会更高
     ///
     /// 但在普通情况下关闭`并发生成`效率更好
-    pub async fn spawn(quantity: usize, concurrent_spawn: bool) -> Self {
+    pub async fn spawn_with_args(quantity: usize, concurrent_spawn: bool, args: A::Args) -> Self {
         let (tx, rx) = bounded_future_both(A::MAIL_BOX_SIZE as usize);
         let addr = Arc::new(LocalAddress::new(tx));
 
@@ -45,6 +59,7 @@ where
                     .map(|_| Context {
                         global_context: global_context.clone(),
                         state: State::Continue,
+                        create_args: args.clone(),
                     })
                     .map(|mut ctx| async move {
                         let actor = A::create(&mut ctx).await;
@@ -61,6 +76,7 @@ where
                 let mut context = Context {
                     global_context: global_context.clone(),
                     state: State::Continue,
+                    create_args: args.clone(),
                 };
                 let actor = A::create(&mut context).await;
                 join_handles.push(tokio::spawn(ActorRunner { actor, context }.run()))
@@ -102,7 +118,10 @@ where
     }
 }
 
-impl<A> Deref for Broker<A> {
+impl<A> Deref for Broker<A>
+where
+    A: Actor,
+{
     type Target = LocalAddress<A>;
 
     fn deref(&self) -> &Self::Target {
@@ -113,7 +132,10 @@ impl<A> Deref for Broker<A> {
 /// 实际上等同于[`JoinHandle<()>`]
 ///
 /// 为了保证`<A>`是相同的
-pub struct SpawnHandle<A> {
+pub struct SpawnHandle<A>
+where
+    A: Actor,
+{
     join_handle: JoinHandle<()>,
     marker: PhantomData<A>,
 }

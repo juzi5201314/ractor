@@ -6,7 +6,7 @@ use crate::actor::Actor;
 use crate::context::Context;
 use crate::State;
 
-pub struct ActorRunner<A> {
+pub struct ActorRunner<A> where A: Actor {
     pub actor: A,
     pub context: Context<A>,
 }

@@ -9,7 +9,7 @@ mod local;
 #[cfg(feature = "remote")]
 mod remote;
 
-pub enum Address<A: ?Sized> {
+pub enum Address<A: ?Sized> where A: Actor {
     Local(LocalAddress<A>),
     #[cfg(feature = "remote")]
     Remote(RemoteAddress),

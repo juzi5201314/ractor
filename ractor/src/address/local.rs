@@ -9,7 +9,7 @@ use crate::error::{ChannelSendError, ChannelTrySendError};
 use crate::message::{HandlerPanic, Message};
 use crate::{Actor, MessageHandler, ResponseHandle};
 
-pub struct LocalAddress<A: ?Sized> {
+pub struct LocalAddress<A: ?Sized> where A: Actor {
     pub(crate) sender: MailBoxTx<A>,
 }
 
@@ -83,7 +83,7 @@ where
     }
 }
 
-impl<A> Clone for LocalAddress<A> {
+impl<A> Clone for LocalAddress<A> where A: Actor {
     fn clone(&self) -> Self {
         LocalAddress {
             sender: self.sender.clone(),
@@ -94,7 +94,7 @@ impl<A> Clone for LocalAddress<A> {
 #[derive(Error)]
 pub enum CallError<A>
 where
-    A: 'static,
+    A: Actor + 'static,
 {
     #[error("send error: {0}")]
     SendError(#[from] ChannelSendError<Envelope<A>>),
@@ -102,7 +102,7 @@ where
     RecvError(#[from] HandlerPanic),
 }
 
-impl<A> Debug for CallError<A> {
+impl<A> Debug for CallError<A> where A: Actor {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "CallError")
     }

@@ -9,6 +9,7 @@ struct MyActor;
 #[async_trait::async_trait]
 impl Actor for MyActor {
     const MAIL_BOX_SIZE: u32 = 100;
+    type Args = ();
 
     async fn create(_ctx: &mut Context<Self>) -> Self
     where

@@ -12,6 +12,8 @@ pub trait Actor: Send + 'static {
     /// 最大重试次数
     const MAX_RESTARTS: u16 = 3;
 
+    type Args: Send + Clone;
+
     async fn create(_ctx: &mut Context<Self>) -> Self
     where
         Self: Sized;

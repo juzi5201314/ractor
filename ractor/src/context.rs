@@ -70,10 +70,12 @@ impl State {
 }
 
 /// 单个actor的上下文
-pub struct Context<A: ?Sized> {
+pub struct Context<A: ?Sized> where A: Actor {
     pub(crate) global_context: GlobalContext<A>,
     /// 指定本周期结束的状态
     pub state: State,
+    /// 创建时的参数
+    pub create_args: A::Args,
 }
 
 impl<A> Context<A>
@@ -126,11 +128,11 @@ where
 }
 
 /// 全局(同一个地址的全部actor)共享的上下文
-pub struct GlobalContext<A: ?Sized> {
+pub struct GlobalContext<A: ?Sized> where A: Actor {
     pub(crate) inner: Arc<Inner<A>>,
 }
 
-pub struct Inner<A: ?Sized> {
+pub struct Inner<A: ?Sized> where A: Actor {
     pub self_addr: Weak<LocalAddress<A>>,
     pub(crate) recipient: MailBoxRx<A>,
 }
@@ -159,10 +161,11 @@ where
     /// 在上下文中产生一个新的Actor
     ///
     /// 可以[`Broker::bind`]将[`SpawnHandle`]绑定到一个Broker上, 以便统一管理.
-    pub async fn spawn(&self) -> SpawnHandle<A> {
+    pub async fn spawn(&self, args: A::Args) -> SpawnHandle<A> {
         let mut context = Context {
             global_context: self.clone(),
             state: State::Continue,
+            create_args: args
         };
         let actor = A::create(&mut context).await;
         tokio::spawn(ActorRunner { actor, context }.run()).into()
@@ -193,7 +196,7 @@ where
     }
 }
 
-impl<A> Deref for GlobalContext<A> {
+impl<A> Deref for GlobalContext<A> where A: Actor {
     type Target = Inner<A>;
 
     #[inline]
@@ -202,7 +205,7 @@ impl<A> Deref for GlobalContext<A> {
     }
 }
 
-impl<A> Clone for GlobalContext<A> {
+impl<A> Clone for GlobalContext<A> where A: Actor {
     fn clone(&self) -> Self {
         GlobalContext {
             inner: Arc::clone(&self.inner),

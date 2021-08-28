@@ -25,6 +25,7 @@ log = "0.4.14"
 tokio = { version = "1", features = ["full"] }
 http = "0.2.4"
 hyper = { version = "0.14.11", features = ["full"] }
+criterion = { version = "0.3", features = ["async"] }
 snmalloc-rs = { version = "0.2.27", features = ["native-cpu", "cache-friendly"] }
 
 [features]
@@ -34,3 +35,4 @@ remote = ["ractor-rpc", "tokio-tungstenite"]
 
 [[bench]]
 name = "spawn"
+harness = false

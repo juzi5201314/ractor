@@ -20,7 +20,7 @@ macro_rules! reach_state {
             State::Yield => {
                 tokio::task::yield_now().await;
             }
-            State::Sleep(t) => tokio::time::sleep(std::time::Duration::from_millis(*t)).await,
+            State::Sleep(t) => tokio::time::sleep(std::time::Duration::from_millis(*t)).boxed().await,
             State::Abort => {}
         }
         $state.clear();
@@ -31,6 +31,7 @@ impl<A> ActorRunner<A>
 where
     A: Actor,
 {
+    #[inline]
     pub async fn run(mut self) -> () {
         let mut restart_count = 0;
 

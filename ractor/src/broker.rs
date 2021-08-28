@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use crossfire::mpmc::bounded_future_both;
 use futures::future::join_all;
-use futures::stream::FuturesUnordered;
 use tokio::task::JoinHandle;
 
 use crate::actor::Actor;
@@ -14,7 +13,7 @@ use crate::{Context, LocalAddress};
 
 pub struct Broker<A> {
     addr: Arc<LocalAddress<A>>,
-    actor_runner_handles: FuturesUnordered<JoinHandle<()>>,
+    actor_runner_handles: Vec<JoinHandle<()>>,
 }
 
 impl<A> Broker<A>
@@ -55,9 +54,9 @@ where
             .await
             .into_iter()
             .map(|(actor, context)| tokio::spawn(ActorRunner { actor, context }.run()))
-            .collect::<FuturesUnordered<JoinHandle<()>>>()
+            .collect::<Vec<JoinHandle<()>>>()
         } else {
-            let join_handles = FuturesUnordered::new();
+            let mut join_handles = Vec::with_capacity(quantity);
             for _ in 0..quantity {
                 let mut context = Context {
                     global_context: global_context.clone(),
@@ -77,7 +76,7 @@ where
 
     /// 将[`GlobalContext::spawn`]产生的Actor绑定到Broker
     #[inline]
-    pub fn bind(&self, handle: SpawnHandle<A>) {
+    pub fn bind(&mut self, handle: SpawnHandle<A>) {
         self.actor_runner_handles.push(handle.join_handle)
     }
 }

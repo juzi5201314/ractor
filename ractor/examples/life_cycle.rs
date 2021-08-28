@@ -1,7 +1,12 @@
 use std::any::Any;
+use std::fmt::Debug;
+use std::io::{stdout, Write};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Duration;
+
+use tokio::time::sleep;
 
 use ractor::{Actor, Broker, Context, MessageHandler, StoppingPosition};
-use std::fmt::Debug;
 
 #[derive(Debug)]
 struct Hello;
@@ -9,6 +14,7 @@ struct Hello;
 #[derive(Default)]
 struct MyActor {
     panic: bool,
+    id: usize,
 }
 
 #[async_trait::async_trait]
@@ -19,27 +25,31 @@ impl Actor for MyActor {
     where
         Self: Sized,
     {
-        MyActor { panic: false }
+        static C: AtomicUsize = AtomicUsize::new(0);
+        MyActor {
+            panic: false,
+            id: C.fetch_add(1, Ordering::SeqCst),
+        }
     }
 
     async fn started(&mut self, _ctx: &mut Context<Self>) {
-        println!("started");
+        println!("no.{} started", self.id);
     }
 
     async fn stopped(&mut self, _ctx: &mut Context<Self>, _pos: StoppingPosition) {
-        println!("stopped");
+        println!("no.{} stopped", self.id);
     }
 
     async fn reset(&mut self, _ctx: &mut Context<Self>)
     where
         Self: Sized,
     {
-        println!("reset");
+        println!("no.{} reset", self.id);
     }
 
     fn catch_unwind(&mut self, _err: Box<dyn Any + Send>, ctx: &mut Context<Self>) {
         ctx.reset();
-        println!("catch_unwind");
+        println!("no.{} catch_unwind", self.id)
     }
 }
 
@@ -47,20 +57,27 @@ impl Actor for MyActor {
 impl MessageHandler<Hello> for MyActor {
     type Output = ();
 
-    async fn handle(&mut self, _: Hello, _ctx: &mut Context<Self>) -> Self::Output {
+    async fn handle(&mut self, _: Hello, ctx: &mut Context<Self>) -> Self::Output {
+        // 避免一个actor把全部消息抢占了
+        ctx.r#yield();
         if !self.panic {
             self.panic = true;
-            panic!("expected");
+            panic!("no.{} expected", self.id);
         } else {
-            println!("no panic");
+            println!("no.{} no panic", self.id);
         }
     }
 }
 
 #[tokio::main]
 async fn main() {
-    let my_actor = Broker::<MyActor>::spawn_one().await;
+    let my_actor = Broker::<MyActor>::spawn(2, true).await;
 
     my_actor.send(Hello).await.unwrap();
     my_actor.send(Hello).await.unwrap();
+    my_actor.send(Hello).await.unwrap();
+    my_actor.send(Hello).await.unwrap();
+
+    sleep(Duration::from_secs(1)).await;
+    stdout().flush().unwrap()
 }

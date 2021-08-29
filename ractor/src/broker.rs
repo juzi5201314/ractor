@@ -50,6 +50,7 @@ where
             inner: Arc::new(Inner {
                 self_addr: Arc::downgrade(&addr),
                 recipient: rx,
+                create_args: args
             }),
         };
 
@@ -59,7 +60,6 @@ where
                     .map(|_| Context {
                         global_context: global_context.clone(),
                         state: State::Continue,
-                        create_args: args.clone(),
                     })
                     .map(|mut ctx| async move {
                         let actor = A::create(&mut ctx).await;
@@ -76,7 +76,6 @@ where
                 let mut context = Context {
                     global_context: global_context.clone(),
                     state: State::Continue,
-                    create_args: args.clone(),
                 };
                 let actor = A::create(&mut context).await;
                 join_handles.push(tokio::spawn(ActorRunner { actor, context }.run()))

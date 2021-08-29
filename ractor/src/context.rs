@@ -73,9 +73,7 @@ impl State {
 pub struct Context<A: ?Sized> where A: Actor {
     pub(crate) global_context: GlobalContext<A>,
     /// 指定本周期结束的状态
-    pub state: State,
-    /// 创建时的参数
-    pub create_args: A::Args,
+    pub state: State
 }
 
 impl<A> Context<A>
@@ -135,6 +133,8 @@ pub struct GlobalContext<A: ?Sized> where A: Actor {
 pub struct Inner<A: ?Sized> where A: Actor {
     pub self_addr: Weak<LocalAddress<A>>,
     pub(crate) recipient: MailBoxRx<A>,
+    /// 创建参数
+    pub create_args: A::Args,
 }
 
 impl<A> Inner<A>
@@ -161,11 +161,10 @@ where
     /// 在上下文中产生一个新的Actor
     ///
     /// 可以[`Broker::bind`]将[`SpawnHandle`]绑定到一个Broker上, 以便统一管理.
-    pub async fn spawn(&self, args: A::Args) -> SpawnHandle<A> {
+    pub async fn spawn(&self) -> SpawnHandle<A> {
         let mut context = Context {
             global_context: self.clone(),
             state: State::Continue,
-            create_args: args
         };
         let actor = A::create(&mut context).await;
         tokio::spawn(ActorRunner { actor, context }.run()).into()
